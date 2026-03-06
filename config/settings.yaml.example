@@ -1,0 +1,36 @@
+# 价格附件生成系统 - 配置文件示例
+# 复制此文件为 settings.yaml 并根据实际环境修改
+
+# 应用配置
+app:
+  name: "价格附件生成系统"
+  debug: false
+  version: "0.1.0"
+  host: "0.0.0.0"
+  port: 8000
+
+# 数据库配置
+database:
+  # Oracle 连接字符串格式：oracle://user:password@host:1521/service_name
+  dsn: "oracle://user:password@localhost:1521/ORCL"
+  min_connections: 2
+  max_connections: 10
+  pool_increment: 1
+  connect_timeout: 30
+  command_timeout: 60
+
+# 日志配置
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format_console: "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s"
+  format_file: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file_path: "logs/app.log"
+  max_bytes: 10485760  # 10MB
+  backup_count: 5
+
+# 模板配置
+template:
+  path: "templates"
+  rule_file: "价格模板规则 - 更新 2026306.xlsx"
+  output_dir: "output"
+  max_file_size: 10485760  # 10MB

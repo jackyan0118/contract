@@ -1,0 +1,58 @@
+"""API 相关异常."""
+
+from .base import AppException, ErrorCode
+
+
+class APIException(AppException):
+    """API 异常基类."""
+
+    def __init__(self, message: str, **kwargs):
+        super().__init__(message, error_code=ErrorCode.SERVICE_ERROR, **kwargs)
+
+
+class ValidationError(APIException):
+    """请求验证失败."""
+
+    def __init__(self, field: str, reason: str, **kwargs):
+        super().__init__(
+            message=f"请求验证失败：{field} - {reason}",
+            error_code=ErrorCode.VALIDATION_ERROR,
+            detail={"field": field, "reason": reason, **kwargs.get("detail", {})},
+            **kwargs,
+        )
+
+
+class NotFoundException(APIException):
+    """资源未找到."""
+
+    def __init__(self, resource: str, identifier: str, **kwargs):
+        super().__init__(
+            message=f"{resource}未找到：{identifier}",
+            error_code=ErrorCode.NOT_FOUND,
+            detail={"resource": resource, "identifier": identifier, **kwargs.get("detail", {})},
+            **kwargs,
+        )
+
+
+class ServiceException(APIException):
+    """服务内部错误."""
+
+    def __init__(self, service: str, reason: str, **kwargs):
+        super().__init__(
+            message=f"服务内部错误：{service} - {reason}",
+            error_code=ErrorCode.SERVICE_ERROR,
+            detail={"service": service, "reason": reason, **kwargs.get("detail", {})},
+            **kwargs,
+        )
+
+
+class ExternalServiceException(APIException):
+    """外部服务调用失败."""
+
+    def __init__(self, service: str, reason: str, **kwargs):
+        super().__init__(
+            message=f"外部服务调用失败：{service} - {reason}",
+            error_code=ErrorCode.EXTERNAL_SERVICE_ERROR,
+            detail={"service": service, "reason": reason, **kwargs.get("detail", {})},
+            **kwargs,
+        )
