@@ -146,7 +146,7 @@
 
 | 序号 | 任务 | 文件路径 | 产出物 | 依赖 |
 |------|------|----------|--------|------|
-| 4.1 | 规则文件解析器 | `src/parsers/rule_parser.py` | Excel 规则解析器 | Phase 3 |
+| 4.1 | 规则文件解析器 | `src/parsers/rule_parser.py` + `config/template_rules.yaml` | YAML 规则解析器（已转换） | Phase 3 |
 | 4.2 | 模板规则模型 | `src/models/template_rule.py` | 规则数据模型 | 4.1 |
 | 4.3 | 规则加载服务 | `src/services/rule_loader.py` | 规则加载服务 | 4.1, 4.2 |
 | 4.4 | 模板匹配器 | `src/matchers/template_matcher.py` | 匹配引擎核心 | 4.2, 4.3 |

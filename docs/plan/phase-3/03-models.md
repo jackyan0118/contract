@@ -4,6 +4,27 @@
 
 本文件定义报价单查询模块的数据模型，基于实际数据库表结构（uf_htjgkst / uf_htjgkst_dt1）。
 
+> **数据字典**: 完整字段信息请参考 [数据字典文档](../../E9Data/)：
+> - [UF_HTJGKST 数据字典](../../E9Data/UF_HTJGKST.md)
+> - [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)
+
+## 实体对象表
+
+价格附件系统涉及以下浏览按钮对应的实体表：
+
+| 表名 | 用途 | 实体对象 |
+|------|------|----------|
+| UF_CRMKHKP | CRM客户卡片 | 客户主体、客户终端 |
+| UF_CPZWH | 产品组维护 | 定价组 |
+| UF_SAPCPLBQD | SAP产品类别清单 | 特殊价格说明 |
+| UF_CPXF | 产品细分 | 产品细分 |
+| UF_PP | 品牌 | 品牌 |
+| UF_JYTC | 检验套餐 | 检验套餐 |
+| UF_CPKXMJC | 项目简称 | 项目简称 |
+| WORKFLOW_REQUESTBASE | 流程请求表 | 相关流程 |
+
+> 详见 [实体对象汇总](../../E9Data/entity-summary.md)
+
 ## 数据模型与数据库字段对照
 
 ### 报价单主表 (Quotation) ↔ uf_htjgkst
@@ -61,19 +82,51 @@
 | sfjl | SFJL | NUMBER(22) | 是否记录 |
 | sfjj | SFJJ | NUMBER(22) | 是否计价 |
 
-#### 扩展字段（Browser类型）
+#### 扩展字段（浏览按钮类型）
 
-| 模型字段 | Oracle字段 | 数据类型 | 说明 |
-|----------|------------|----------|------|
-| sjkht | SJKHZT | VARCHAR2(1000) | 客户主体 |
-| djz | DJZ | VARCHAR2(1000) | 等级 |
-| djzmc | DJZMC | VARCHAR2(999) | 等级名称 |
-| sjkhan | SJKH | VARCHAR2(1000) | 客户 |
-| sjkhan_zd | SJKHZD | VARCHAR2(1000) | 客户组 |
-| cpxf | CPXF | VARCHAR2(1000) | 产品型号 |
-| pp | PP | VARCHAR2(1000) | 品牌 |
-| jytc | JYTC | VARCHAR2(1000) | 业态 |
-| xmjc | XMJC | VARCHAR2(1000) | 项目简称 |
+> **注意**: 以下字段在数据库中存储的是实体ID，显示值需要通过关联查询获取。
+> 详见 [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)
+
+| 模型字段 | Oracle字段 | 数据类型 | 字段类型 | 实体对象 | 说明 |
+|----------|------------|----------|----------|----------|------|
+| sjkht | SJKHZT | VARCHAR2(1000) | 浏览按钮 | UF_CRMKHKP | 设价客户主体 |
+| djz | DJZ | VARCHAR2(1000) | 浏览按钮 | UF_CPZWH | 定价组 |
+| djzmc | DJZMC | VARCHAR2(999) | 单行文本 | | 定价组名称 |
+| sjkhan | SJKH | VARCHAR2(1000) | 浏览按钮 | UF_CRMKHKP | 设价客户 |
+| sjkhan_zd | SJKHZD | VARCHAR2(1000) | 浏览按钮 | UF_CRMKHKP | 设价客户终端 |
+| cpxf | CPXF | VARCHAR2(1000) | 浏览按钮 | UF_CPXF | 产品细分 |
+| pp | PP | VARCHAR2(1000) | 浏览按钮 | UF_PP | 品牌 |
+| jytc | JYTC | VARCHAR2(1000) | 浏览按钮 | UF_JYTC | 检验套餐 |
+| xmjc | XMJC | VARCHAR2(1000) | 浏览按钮 | UF_CPKXMJC | 项目简称 |
+| tsjgsm | TSJGSM | VARCHAR2(1000) | 浏览按钮 | UF_SAPCPLBQD | 特殊价格说明 |
+| sjsj | SJSJ | CHAR(10) | 浏览按钮 | 日期 | 设价时间 |
+
+#### 状态标记字段
+
+| 模型字段 | Oracle字段 | 数据类型 | 字段类型 | 说明 |
+|----------|------------|----------|----------|------|
+| sfwc | SFWC | NUMBER | 选择框 | 是否外采 |
+| sfjl | SFJL | NUMBER | 选择框 | 是否计量 |
+| sfjj | SFJJ | NUMBER | 选择框 | 是否计奖 |
+| jggxbj | JGGXBJ | NUMBER | 选择框 | 价格更新标记 |
+| sjjd | SJJD | NUMBER | 选择框 | 设价节点 |
+| sftqsj | SFTQSJ | NUMBER | 选择框 | 是否提前设价 |
+| sftpsybjg | SFTPSYBJG | NUMBER | 选择框 | 是否突破事业部价格 |
+| sjlx | SJLX | NUMBER | 选择框 | 设价类型 |
+
+#### 价格相关字段（新增）
+
+| 模型字段 | Oracle字段 | 数据类型 | 字段类型 | 说明 |
+|----------|------------|----------|----------|------|
+| xzxcjg | XZXJG | NUMBER(38,2) | 单行文本 | 现执行价格 |
+| tpj | TPJ | NUMBER(38,2) | 单行文本 | 突破价 |
+| sczdjjc | SCZDJJC | NUMBER(38,2) | 单行文本 | 市场指导价_集采 |
+| sczdjfjc | SCZDJFJC | NUMBER(38,2) | 单行文本 | 市场指导价_非集采 |
+| bzjxjjc | BZJXJJC | NUMBER(38,2) | 单行文本 | 标准经销价_集采 |
+| bzjxjfjc | BZJXJFJC | NUMBER(38,2) | 单行文本 | 标准经销价_非集采 |
+| jcZbj | JCZBJ | NUMBER(38,2) | 单行文本 | 集采中标价 |
+| jcjxj | JCJXJ | NUMBER(38,2) | 单行文本 | 集采经销价 |
+| jgjcy | JGJCY | NUMBER(38,2) | 单行文本 | 价格间差异 |
 
 ---
 
@@ -170,10 +223,40 @@ class QuotationDetail:
     jgms: Optional[str] = None
 
     # 状态标记
-    sfwc: Optional[int] = None  # 是否完成
-    sfjl: Optional[int] = None  # 是否记录
-    sfjj: Optional[int] = None  # 是否计价
+    sfwc: Optional[int] = None  # 是否外采
+    sfjl: Optional[int] = None  # 是否计量
+    sfjj: Optional[int] = None  # 是否计奖
     bz: Optional[str] = None  # 备注
+
+    # 价格标记
+    jggxbj: Optional[int] = None  # 价格更新标记
+    sjjd: Optional[int] = None  # 设价节点
+    sftqsj: Optional[int] = None  # 是否提前设价
+    sftpsybjg: Optional[int] = None  # 是否突破事业部价格
+    sjlx: Optional[int] = None  # 设价类型
+
+    # 浏览按钮字段（存储实体ID）
+    sjkht: Optional[str] = None  # 设价客户主体
+    sjkhan: Optional[str] = None  # 设价客户
+    sjkhan_zd: Optional[str] = None  # 设价客户终端
+    djz: Optional[str] = None  # 定价组
+    tsjgsm: Optional[str] = None  # 特殊价格说明
+    cpxf: Optional[str] = None  # 产品细分
+    pp: Optional[str] = None  # 品牌
+    jytc: Optional[str] = None  # 检验套餐
+    xmjc: Optional[str] = None  # 项目简称
+    sjsj: Optional[str] = None  # 设价时间
+
+    # 扩展价格字段
+    xzxcjg: Optional[Decimal] = None  # 现执行价格
+    tpj: Optional[Decimal] = None  # 突破价
+    sczdjjc: Optional[Decimal] = None  # 市场指导价_集采
+    sczdjfjc: Optional[Decimal] = None  # 市场指导价_非集采
+    bzjxjjc: Optional[Decimal] = None  # 标准经销价_集采
+    bzjxjfjc: Optional[Decimal] = None  # 标准经销价_非集采
+    jczbj: Optional[Decimal] = None  # 集采中标价
+    jcjxj: Optional[Decimal] = None  # 集采经销价
+    jgjcy: Optional[Decimal] = None  # 价格间差异
 
 
 @dataclass
@@ -274,3 +357,4 @@ item = QuotationItem(
 | 日期 | 修改内容 |
 |------|----------|
 | 2026-03-09 | 初始版本，基于实际数据库表结构 |
+| 2026-03-09 | 更新：添加浏览按钮字段、状态字段、扩展价格字段，引用数据字典文档 |

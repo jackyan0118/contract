@@ -31,59 +31,87 @@ src/
 
 ## 数据库表信息
 
-根据实际数据库查询结果：
+根据实际数据库查询结果，详见 [数据字典文档](../../E9Data/)：
 
 | 表类型 | 表名 | Schema | 说明 |
 |--------|------|--------|------|
 | 主表 | uf_htjgkst | ecology | 报价单主表（15个字段） |
 | 明细表 | uf_htjgkst_dt1 | ecology | 报价单明细表（46个字段） |
 
+> **注意**: 完整字段列表请参考：
+> - [UF_HTJGKST 数据字典](../../E9Data/UF_HTJGKST.md)
+> - [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)
+
 ### 主表字段 (uf_htjgkst)
 
-| 序号 | 字段名 | 数据类型 | 说明 |
-|------|--------|----------|------|
-| 1 | ID | NUMBER(22) | 主键 |
-| 2 | REQUESTID | NUMBER(22) | 流程RequestID |
-| 3 | FORMMODEID | NUMBER(22) | 表单模式ID |
-| 4 | MODEDATACREATER | NUMBER(22) | 创建人 |
-| 5 | MODEDATACREATERTYPE | NUMBER(22) | 创建人类型 |
-| 6 | MODEDATACREATEDATE | VARCHAR2(10) | 创建日期 |
-| 7 | MODEDATACREATETIME | VARCHAR2(8) | 创建时间 |
-| 8 | MODEUUID | VARCHAR2(100) | 流程UUID |
-| 9 | FORM_BIZ_ID | VARCHAR2(100) | 业务ID |
-| 10 | LCBH | VARCHAR2(999) | 流程编号 |
-| 11 | HTBH | VARCHAR2(999) | 合同编号 |
-| 12 | XGLC | NUMBER(22) | 相关流程 |
-| 13 | WYBS | VARCHAR2(999) | 唯一标识（查询主键） |
-| 14 | MODEDATAMODIFIER | NUMBER(22) | 修改人 |
-| 15 | MODEDATAMODIFYDATETIME | VARCHAR2(100) | 修改时间 |
+| 序号 | 字段名 | 数据类型 | 字段类型 | 说明 |
+|------|--------|----------|----------|------|
+| 1 | ID | NUMBER | 系统字段 | 主键 |
+| 2 | REQUESTID | NUMBER | 系统字段 | 流程RequestID |
+| 3 | FORMMODEID | NUMBER | 系统字段 | 表单模式ID |
+| 4 | MODEDATACREATER | NUMBER | 数字 | 创建人 |
+| 5 | MODEDATACREATERTYPE | NUMBER | 数字 | 创建人类型 |
+| 6 | MODEDATACREATEDATE | VARCHAR2(10) | 单行文本 | 创建日期 |
+| 7 | MODEDATACREATETIME | VARCHAR2(8) | 单行文本 | 创建时间 |
+| 8 | MODEUUID | VARCHAR2(100) | 单行文本 | 流程UUID |
+| 9 | FORM_BIZ_ID | VARCHAR2(100) | 单行文本 | 业务ID |
+| 10 | LCBH | VARCHAR2(999) | 单行文本 | 流程编号 |
+| 11 | HTBH | VARCHAR2(999) | 单行文本 | 合同编号 |
+| 12 | XGLC | NUMBER | 浏览按钮 | 相关流程 |
+| 13 | WYBS | VARCHAR2(999) | 单行文本 | **唯一标识（查询主键）** |
+| 14 | MODEDATAMODIFIER | NUMBER | 数字 | 修改人 |
+| 15 | MODEDATAMODIFYDATETIME | VARCHAR2(100) | 单行文本 | 修改时间 |
 
 ### 明细表字段 (uf_htjgkst_dt1)
 
-关键字段：
+关键字段（完整字段列表见 [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)）：
 
-| 序号 | 字段名 | 数据类型 | 说明 |
-|------|--------|----------|------|
-| 1 | ID | NUMBER(22) | 主键 |
-| 2 | MAINID | NUMBER(22) | 主表ID（关联主表.ID） |
-| 3 | SJKHZT | VARCHAR2(1000) | 客户主体 |
-| 4 | LSH | VARCHAR2(999) | 流水号 |
-| 5 | WYBS | VARCHAR2(999) | 唯一标识 |
-| 6 | LYXH | NUMBER(22) | 序号 |
-| 7 | DJZ | VARCHAR2(1000) | 等级 |
-| 8 | DJZMC | VARCHAR2(999) | 等级名称 |
-| 9 | WLDM | VARCHAR2(999) | 物料代码 |
-| 10 | WLMS | VARCHAR2(999) | 物料描述 |
-| 11 | SFWC | NUMBER(22) | 是否完成 |
-| 12 | GG | VARCHAR2(999) | 规格 |
-| 13 | DW | VARCHAR2(999) | 单位 |
-| 14 | JGMS | VARCHAR2(999) | 价格描述 |
-| 15 | LSJ | NUMBER(22) | 零售价 |
-| 16 | BZJXJ | NUMBER(22) | 标准价(升级价) |
-| 17 | GHJY | NUMBER(22) | 供货价 |
-| 18 | ZXKHKPDJY | NUMBER(22) | 执行客户开单价 |
-| 19 | JSJ | NUMBER(22) | 结算价 |
-| 20-46 | ... | ... | 其他价格字段 |
+| 序号 | 字段名 | 数据类型 | 字段类型 | 实体对象 | 说明 |
+|------|--------|----------|----------|----------|------|
+| 1 | ID | NUMBER | 系统字段 | | 主键 |
+| 2 | MAINID | NUMBER | 系统字段 | | 关联主表ID |
+| 3 | SJKHZT | VARCHAR2(1000) | 浏览按钮 | UF_CRMKHKP | 设价客户主体 |
+| 4 | LSH | VARCHAR2(999) | 单行文本 | | 流水号 |
+| 5 | WYBS | VARCHAR2(999) | 单行文本 | | 唯一标识 |
+| 6 | LYXH | NUMBER | 单行文本 | | 物料生成来源（明细） |
+| 7 | DJZ | VARCHAR2(1000) | 浏览按钮 | UF_CPZWH | 定价组 |
+| 8 | DJZMC | VARCHAR2(999) | 单行文本 | | 定价组名称 |
+| 9 | WLDM | VARCHAR2(999) | 单行文本 | | 物料代码 |
+| 10 | WLMS | VARCHAR2(999) | 单行文本 | | 物料描述 |
+| 11 | SFWC | NUMBER | 选择框 | | 是否外采 |
+| 12 | GG | VARCHAR2(999) | 单行文本 | | 规格 |
+| 13 | DW | VARCHAR2(999) | 单行文本 | | 单位 |
+| 14 | JGMS | VARCHAR2(999) | 单行文本 | | 价格描述 |
+| 15 | LSJ | NUMBER(38,2) | 单行文本 | | 零售价 |
+| 16 | BZJXJ | NUMBER(38,2) | 单行文本 | | 标准经销价 |
+| 17 | GHJY | NUMBER(38,2) | 单行文本 | | 供货价_元 |
+| 18 | ZXKHKPDJY | NUMBER(38,2) | 单行文本 | | 直销客户开票单价_元 |
+| 19 | JSJ | NUMBER(38,2) | 单行文本 | | 结算价 |
+| 20 | KLBFB | NUMBER(38,2) | 单行文本 | | 扣率_百分比 |
+| 21 | YHFDBFB | NUMBER(38,2) | 单行文本 | | 优惠幅度_百分比 |
+| 22 | BZ | VARCHAR2(999) | 单行文本 | | 备注 |
+| 23 | SFJL | NUMBER | 选择框 | | 是否计量 |
+| 24 | SFJJ | NUMBER | 选择框 | | 是否计奖 |
+| 25 | TSJGSM | VARCHAR2(1000) | 浏览按钮 | UF_SAPCPLBQD | 特殊价格说明 |
+| 26 | JGGXBJ | NUMBER | 选择框 | | 价格更新标记 |
+| 27 | SJJD | NUMBER | 选择框 | | 设价节点 |
+| 28 | SJSJ | CHAR(10) | 浏览按钮 | 日期 | 设价时间 |
+| 29 | SFTQSJ | NUMBER | 选择框 | | 是否提前设价 |
+| 30-46 | ... | ... | ... | | 其他价格字段 |
+
+#### 浏览按钮字段对应实体对象
+
+| 字段名 | 实体对象 | 说明 |
+|--------|----------|------|
+| SJKHZT | UF_CRMKHKP | 设价客户主体 |
+| DJZ | UF_CPZWH | 定价组 |
+| TSJGSM | UF_SAPCPLBQD | 特殊价格说明 |
+| SJKH | UF_CRMKHKP | 设价客户 |
+| SJKHZD | UF_CRMKHKP | 设价客户终端 |
+| CPXF | UF_CPXF | 产品细分 |
+| PP | UF_PP | 品牌 |
+| JYTC | UF_JYTC | 检验套餐 |
+| XMJC | UF_CPKXMJC | 项目简称 |
 
 ## 技术选型
 
@@ -135,25 +163,56 @@ quotation:
 quotation_detail:
   # 报价单明细表字段映射 (表: uf_htjgkst_dt1)
   mapping:
-    MAINID: "mainid"       # 主表ID
-    WYBS: "wybs"           # 唯一标识
-    LYXH: "lyxh"           # 序号
-    WLDM: "wldm"           # 物料代码
-    WLMS: "wlms"           # 物料描述
-    GG: "gg"               # 规格
-    DW: "dw"               # 单位
-    JGMS: "jgms"           # 价格描述
-    LSJ: "lsj"             # 零售价
-    BZJXJ: "bzjxj"         # 标准价(升级价)
-    GHJY: "ghjy"           # 供货价
-    ZXKHKPDJY: "zxkhkpdjy" # 执行客户开单价
-    JSJ: "jsj"             # 结算价
-    KLBFB: "klbfb"         # 扣率百分比
-    YHFDBFB: "yhfdbfb"     # 优惠幅度百分比
-    BZ: "bz"               # 备注
-    SFWC: "sfwc"           # 是否完成
-    SFJL: "sfjl"           # 是否记录
-    SFJJ: "sfjj"           # 是否计价
+    MAINID: "mainid"           # 主表ID
+    WYBS: "wybs"               # 唯一标识
+    LYXH: "lyxh"               # 序号
+    WLDM: "wldm"               # 物料代码
+    WLMS: "wlms"               # 物料描述
+    GG: "gg"                   # 规格
+    DW: "dw"                   # 单位
+    JGMS: "jgms"               # 价格描述
+    LSJ: "lsj"                 # 零售价
+    BZJXJ: "bzjxj"             # 标准经销价
+    GHJY: "ghjy"               # 供货价_元
+    ZXKHKPDJY: "zxkhkpdjy"     # 直销客户开票单价_元
+    JSJ: "jsj"                 # 结算价
+    KLBFB: "klbfb"             # 扣率_百分比
+    YHFDBFB: "yhfdbfb"         # 优惠幅度_百分比
+    BZ: "bz"                   # 备注
+
+    # 状态标记
+    SFWC: "sfwc"               # 是否外采
+    SFJL: "sfjl"               # 是否计量
+    SFJJ: "sfjj"               # 是否计奖
+    JGGXBJ: "jggxbj"           # 价格更新标记
+    SJJD: "sjjd"               # 设价节点
+    SFTQSJ: "sftqsj"           # 是否提前设价
+    SFTPSYBJG: "sftpsybjg"     # 是否突破事业部价格
+    SJLX: "sjlx"               # 设价类型
+
+    # 浏览按钮字段（存储实体ID）
+    SJKHZT: "sjkht"            # 设价客户主体
+    SJKH: "sjkhan"             # 设价客户
+    SJKHZD: "sjkhan_zd"        # 设价客户终端
+    DJZ: "djz"                 # 定价组
+    DJZMC: "djzmc"             # 定价组名称
+    TSJGSM: "tsjgsm"           # 特殊价格说明
+    CPXF: "cpxf"               # 产品细分
+    PP: "pp"                   # 品牌
+    JYTC: "jytc"               # 检验套餐
+    XMJC: "xmjc"               # 项目简称
+    SJSJ: "sjsj"               # 设价时间
+
+    # 扩展价格字段
+    XZXJG: "xzxcjg"            # 现执行价格
+    TPJ: "tpj"                 # 突破价
+    SCZDJJC: "sczdjjc"         # 市场指导价_集采
+    SCZDJFJC: "sczdjfjc"       # 市场指导价_非集采
+    BZJXJJC: "bzjxjjc"         # 标准经销价_集采
+    BZJXJFJC: "bzjxjfjc"       # 标准经销价_非集采
+    JCZBJ: "jczbj"             # 集采中标价
+    JCJXJ: "jcjxj"             # 集采经销价
+    JGJCY: "jgjcy"             # 价格间差异
 
   types:
     mainid: "int"
@@ -172,9 +231,40 @@ quotation_detail:
     klbfb: "decimal"
     yhfdbfb: "decimal"
     bz: "str"
+
+    # 状态标记
     sfwc: "int"
     sfjl: "int"
     sfjj: "int"
+    jggxbj: "int"
+    sjjd: "int"
+    sftqsj: "int"
+    sftpsybjg: "int"
+    sjlx: "int"
+
+    # 浏览按钮字段（存储实体ID）
+    sjkht: "str"
+    sjkhan: "str"
+    sjkhan_zd: "str"
+    djz: "str"
+    djzmc: "str"
+    tsjgsm: "str"
+    cpxf: "str"
+    pp: "str"
+    jytc: "str"
+    xmjc: "str"
+    sjsj: "str"
+
+    # 扩展价格字段
+    xzxcjg: "decimal"
+    tpj: "decimal"
+    sczdjjc: "decimal"
+    sczdjfjc: "decimal"
+    bzjxjjc: "decimal"
+    bzjxjfjc: "decimal"
+    jczbj: "decimal"
+    jcjxj: "decimal"
+    jgjcy: "decimal"
 ```
 
 ### 3.3 报价单主表查询
@@ -515,17 +605,39 @@ def _get_mapping_config() -> dict:
             _mapping_cache = {
                 "quotation": {
                     "mapping": {
-                        "WYBS": "wybs", "WLDW": "wldw", "BZ": "bz", "ZDR": "zdr",
-                        "ZDSJ": "zdsj", "SHR": "shr", "SHSJ": "shsj", "DJZT": "djzt",
-                        "JE": "je", "SL": "sl", "CPXFL": "cpxfl", "DJJZ": "djjz",
-                        "SFJC": "sfjc", "GHLX": "ghlx",
+                        "WYBS": "wybs",
+                        "LCBH": "lcbh",
+                        "HTBH": "htbh",
+                        "XGLC": "xglc",
+                        "ID": "id",
+                        "REQUESTID": "requestid",
+                        "FORMMODEID": "formmodeid",
+                        "MODEDATACREATER": "creater",
+                        "MODEDATACREATEDATE": "createdate",
+                        "MODEDATACREATETIME": "createtime",
                     }
                 },
                 "quotation_detail": {
                     "mapping": {
-                        "WYBS": "wybs", "MXH": "mxh", "CPBM": "cpbm", "CPMC": "cpmc",
-                        "GG": "gg", "DW": "dw", "DJ": "dj", "JE": "je", "SL": "sl",
-                        "SCSXRQ": "scsxrq", "PH": "ph",
+                        "WYBS": "wybs",
+                        "MAINID": "mainid",
+                        "LYXH": "lyxh",
+                        "WLDM": "wldm",
+                        "WLMS": "wlms",
+                        "GG": "gg",
+                        "DW": "dw",
+                        "JGMS": "jgms",
+                        "LSJ": "lsj",
+                        "BZJXJ": "bzjxj",
+                        "GHJY": "ghjy",
+                        "ZXKHKPDJY": "zxkhkpdjy",
+                        "JSJ": "jsj",
+                        "KLBFB": "klbfb",
+                        "YHFDBFB": "yhfdbfb",
+                        "BZ": "bz",
+                        "SFWC": "sfwc",
+                        "SFJL": "sfjl",
+                        "SFJJ": "sfjj",
                     }
                 },
             }
@@ -598,14 +710,20 @@ class DataTransformer:
         if value is None:
             return None
 
-        # 金额字段 - 转换为 Decimal
-        if field_name in ("je", "dj"):
+        # 金额字段 - 转换为 Decimal（所有价格相关字段）
+        if field_name in ("je", "dj", "lsj", "bzjxj", "ghjy", "zxkhkpdjy", "jsj", "klbfb", "yhfdbfb"):
             if isinstance(value, (int, float)):
                 return Decimal(str(value)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             return value
 
-        # 数量字段 - 转换为 int
-        if field_name in ("sl", "mxh"):
+        # 数量字段 - 转换为 int（所有数量/序号字段）
+        if field_name in ("sl", "mxh", "lyxh", "id", "mainid", "requestid", "formmodeid", "creater", "xglc"):
+            if isinstance(value, (int, float)):
+                return int(value)
+            return value
+
+        # 状态字段 - 转换为 int
+        if field_name in ("sfwc", "sfjl", "sfjj"):
             if isinstance(value, (int, float)):
                 return int(value)
             return value
@@ -661,17 +779,10 @@ def transform_quotation(wybs: str) -> Optional[QuotationItem]:
     # 构建完整报价单项
     item = QuotationItem(
         wybs=quotation.wybs,
-        wldw=quotation.wldw,
-        bz=quotation.bz,
-        zdr=quotation.zdr,
-        zdsj=quotation.zdsj,
-        djzt=quotation.djzt,
-        je=quotation.je,
-        sl=quotation.sl,
-        cpxfl=quotation.cpxfl,
-        djjz=quotation.djjz,
-        sfjc=quotation.sfjc,
-        ghlx=quotation.ghlx,
+        id=quotation.id,
+        lcbh=quotation.lcbh,
+        htbh=quotation.htbh,
+        xglc=quotation.xglc,
         items=details,
     )
 
@@ -705,14 +816,14 @@ class QueryException(Exception):
 
 ## 验收标准
 
-- [ ] 可根据 wybs 查询报价单主表数据
-- [ ] 可查询报价单明细数据（uf_htjgkst_dt1）
-- [ ] 数据字段映射可配置
-- [ ] 支持数据类型转换（Decimal、datetime）
-- [ ] 返回完整的 QuotationItem（包含明细列表）
-- [ ] 错误处理完善，无数据时返回 None
-- [ ] 日志记录完整
-- [ ] 支持配置化的 Schema 前缀（通过 `DB_SCHEMA` 环境变量或配置文件）
+- [x] 可根据 wybs 查询报价单主表数据
+- [x] 可查询报价单明细数据（uf_htjgkst_dt1）
+- [x] 数据字段映射可配置
+- [x] 支持数据类型转换（Decimal、datetime）
+- [x] 返回完整的 QuotationItem（包含明细列表）
+- [x] 错误处理完善，无数据时返回 None
+- [x] 日志记录完整
+- [x] 支持配置化的 Schema 前缀（通过 `DB_SCHEMA` 环境变量或配置文件）
 
 ## Schema 配置说明
 
@@ -757,5 +868,6 @@ Phase 3 完成后，进入 **Phase 4: 模板匹配引擎**
 
 ---
 
-*文档版本：1.0*
-*创建日期：2026-03-09*
+*文档版本：1.1*
+*更新日期：2026-03-09*
+*更新内容：添加浏览按钮字段、状态字段、扩展价格字段，引用数据字典文档*

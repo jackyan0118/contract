@@ -5,49 +5,55 @@
 - **表名**: uf_htjgkst (主表), uf_htjgkst_dt1 (明细表)
 - **Schema**: ECOLOGY
 
+> **注意**: 完整字段列表请参考 [数据字典文档](../../E9Data/)：
+> - [UF_HTJGKST 数据字典](../../E9Data/UF_HTJGKST.md)
+> - [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)
+
 ---
 
 ## 主表 (UF_HTJGKST)
 
-| 序号 | 字段名 | 数据库类型 | 说明 |
-|------|--------|------------|------|
-| 1 | ID | NUMBER(22) | 主键 |
-| 2 | REQUESTID | NUMBER(22) | 流程RequestID |
-| 3 | FORMMODEID | NUMBER(22) | 表单模式ID |
-| 4 | MODEDATACREATER | NUMBER(22) | 创建人 |
-| 5 | MODEDATACREATERTYPE | NUMBER(22) | 创建人类型 |
-| 6 | MODEDATACREATEDATE | VARCHAR2(10) | 创建日期 |
-| 7 | MODEDATACREATETIME | VARCHAR2(8) | 创建时间 |
-| 8 | MODEUUID | VARCHAR2(100) | 流程UUID |
-| 9 | FORM_BIZ_ID | VARCHAR2(100) | 业务ID |
-| 10 | LCBH | VARCHAR2(999) | 流程编号 |
-| 11 | HTBH | VARCHAR2(999) | 合同编号 |
-| 12 | XGLC | NUMBER(22) | 相关流程 |
-| 13 | WYBS | VARCHAR2(999) | 主键标识(唯一标识) |
-| 14 | MODEDATAMODIFIER | NUMBER(22) | 修改人 |
-| 15 | MODEDATAMODIFYDATETIME | VARCHAR2(100) | 修改时间 |
+| 序号 | 字段名 | 数据库类型 | 字段类型 | 说明 |
+|------|--------|------------|----------|------|
+| 1 | ID | NUMBER | 系统字段 | 主键 |
+| 2 | REQUESTID | NUMBER | 系统字段 | 流程RequestID |
+| 3 | FORMMODEID | NUMBER | 系统字段 | 表单模式ID |
+| 4 | MODEDATACREATER | NUMBER | 数字 | 创建人 |
+| 5 | MODEDATACREATERTYPE | NUMBER | 数字 | 创建人类型 |
+| 6 | MODEDATACREATEDATE | VARCHAR2(10) | 单行文本 | 创建日期 |
+| 7 | MODEDATACREATETIME | VARCHAR2(8) | 单行文本 | 创建时间 |
+| 8 | MODEUUID | VARCHAR2(100) | 单行文本 | 流程UUID |
+| 9 | FORM_BIZ_ID | VARCHAR2(100) | 单行文本 | 业务ID |
+| 10 | LCBH | VARCHAR2(999) | 单行文本 | 流程编号 |
+| 11 | HTBH | VARCHAR2(999) | 单行文本 | 合同编号 |
+| 12 | XGLC | NUMBER | 浏览按钮 | 相关流程 |
+| 13 | WYBS | VARCHAR2(999) | 单行文本 | 主键标识(唯一标识) |
+| 14 | MODEDATAMODIFIER | NUMBER | 数字 | 修改人 |
+| 15 | MODEDATAMODIFYDATETIME | VARCHAR2(100) | 单行文本 | 修改时间 |
 
 ---
 
 ## 明细表 (UF_HTJGKST_DT1)
 
-| 序号 | 字段名 | 数据库类型 | 说明 | 泛微字段ID |
-|------|--------|------------|------|-----------|
-| 1 | ID | NUMBER(22) | 主键 | - |
-| 2 | MAINID | NUMBER(22) | 主表ID | - |
-| 3 | SJKHZT | VARCHAR2(1000) | 客户主体 | -174409 |
-| 4 | LSH | VARCHAR2(999) | 流水号 | -174410 |
-| 5 | WYBS | VARCHAR2(999) | 主键标识 | -174411 |
-| 6 | LYXH | NUMBER(22) | 序号 | -174412 |
-| 7 | DJZ | VARCHAR2(1000) | 等级 | -174413 |
-| 8 | DJZMC | VARCHAR2(999) | 等级名称 | -174414 |
-| 9 | WLDM | VARCHAR2(999) | 物料代码 | -174415 |
-| 10 | WLMS | VARCHAR2(999) | 物料描述 | -174416 |
-| 11 | SFWC | NUMBER(22) | 是否完成 | -174417 |
-| 12 | GG | VARCHAR2(999) | 规格 | -174418 |
-| 13 | DW | VARCHAR2(999) | 单位 | -174419 |
-| 14 | JGMS | VARCHAR2(999) | 价格描述 | -174420 |
-| 15 | LSJ | NUMBER(22) | 零售价 | -174421 |
+| 序号 | 字段名 | 数据库类型 | 字段类型 | 实体对象 | 说明 |
+|------|--------|------------|----------|----------|------|
+| 1 | ID | NUMBER | 系统字段 | | 主键 |
+| 2 | MAINID | NUMBER | 系统字段 | | 主表ID |
+| 3 | SJKHZT | VARCHAR2(1000) | 浏览按钮 | UF_CRMKHKP | 设价客户主体 |
+| 4 | LSH | VARCHAR2(999) | 单行文本 | | 流水号 |
+| 5 | WYBS | VARCHAR2(999) | 单行文本 | | 主键标识 |
+| 6 | LYXH | NUMBER | 单行文本 | | 物料生成来源（明细） |
+| 7 | DJZ | VARCHAR2(1000) | 浏览按钮 | UF_CPZWH | 定价组 |
+| 8 | DJZMC | VARCHAR2(999) | 单行文本 | | 定价组名称 |
+| 9 | WLDM | VARCHAR2(999) | 单行文本 | | 物料代码 |
+| 10 | WLMS | VARCHAR2(999) | 单行文本 | | 物料描述 |
+| 11 | SFWC | NUMBER | 选择框 | | 是否外采 |
+| 12 | GG | VARCHAR2(999) | 单行文本 | | 规格 |
+| 13 | DW | VARCHAR2(999) | 单行文本 | | 单位 |
+| 14 | JGMS | VARCHAR2(999) | 单行文本 | | 价格描述 |
+| 15 | LSJ | NUMBER(38,2) | 单行文本 | | 零售价 |
+
+> 完整46个字段请参考 [UF_HTJGKST_DT1 数据字典](../../E9Data/UF_HTJGKST_DT1.md)
 | 16 | BZJXJ | NUMBER(22) | 标准价(升级价) | -174422 |
 | 17 | GHJY | NUMBER(22) | 供货价 | -174423 |
 | 18 | ZXKHKPDJY | NUMBER(22) | 执行客户开单价(代理价) | -174424 |
@@ -79,6 +85,35 @@
 | 44 | JYTC | VARCHAR2(1000) | 业态 | -174450 |
 | 45 | XMJC | VARCHAR2(1000) | 项目简称 | -174451 |
 | 46 | JGJCY | NUMBER(22) | 价格间差异 | -174452 |
+
+---
+
+## 字段类型说明
+
+| 字段类型 | 说明 | 存储内容 |
+|----------|------|----------|
+| 系统字段 | ID, REQUESTID, FORMMODEID 等系统管理字段 | - |
+| 单行文本 | VARCHAR2 类型文本字段 | 文本内容 |
+| 数字 | NUMBER 类型数值字段 | 数值 |
+| 选择框 | 单选/多选标记字段 | 0/1 整数值 |
+| 浏览按钮 | 关联选择字段 | 实体表ID |
+
+### 浏览按钮字段对应实体对象
+
+| 字段名 | 实体对象 | 说明 |
+|--------|----------|------|
+| XGLC | WORKFLOW_REQUESTBASE | 相关流程 |
+| SJKHZT | UF_CRMKHKP | 设价客户主体 |
+| DJZ | UF_CPZWH | 定价组 |
+| TSJGSM | UF_SAPCPLBQD | 特殊价格说明 |
+| SJKH | UF_CRMKHKP | 设价客户 |
+| SJKHZD | UF_CRMKHKP | 设价客户终端 |
+| CPXF | UF_CPXF | 产品细分 |
+| PP | UF_PP | 品牌 |
+| JYTC | UF_JYTC | 检验套餐 |
+| XMJC | UF_CPKXMJC | 项目简称 |
+
+> 详细字段映射请参考 [数据字典文档](../../E9Data/) 和 [实体对象汇总](../../E9Data/entity-summary.md)
 
 ---
 
