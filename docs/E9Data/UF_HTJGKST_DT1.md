@@ -59,6 +59,9 @@
 | 44 | JYTC | VARCHAR2(1000) | YES | 浏览按钮 | UF_JYTC | 检验套餐 |
 | 45 | XMJC | VARCHAR2(1000) | YES | 浏览按钮 | UF_CPKXMJC | 项目简称 |
 | 46 | JGJCY | NUMBER(38,2) | YES | 单行文本 |  | 价格间差异 |
+| 47 | BNGHJLX | VARCHAR2(1000) | YES | 浏览按钮 | UF_YXZXHTGHJLXBN | 本年供货价类型 |
+| 48 | BNGHJLXZ | NUMBER | YES | 单行文本 |  | 本年供货价类型值 |
+| 49 | SFJC | NUMBER | YES | 选择框 |  | 是否集采 |
 
 ## 字段类型说明
 
