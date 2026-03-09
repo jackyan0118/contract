@@ -1,0 +1,133 @@
+# 字段映射配置
+# 用于 Oracle 数据库字段与系统内部模型字段的映射
+
+quotation:
+  # 报价单主表 (UF_HTJGKST)
+  table_name: "ECOLOGY.uf_htjgkst"
+  primary_key: "ID"
+  unique_key: "WYBS"
+  mapping:
+    # 系统字段
+    ID: "id"
+    REQUESTID: "requestid"
+    FORMMODEID: "formmodeid"
+    MODEDATACREATER: "creater"
+    MODEDATACREATERTYPE: "creatertype"
+    MODEDATACREATEDATE: "createdate"
+    MODEDATACREATETIME: "createtime"
+    MODEUUID: "modeuuid"
+    FORM_BIZ_ID: "form_biz_id"
+    MODEDATAMODIFIER: "modifier"
+    MODEDATAMODIFYDATETIME: "modify_datetime"
+    # 业务字段
+    LCBH: "lcbh"
+    HTBH: "htbh"
+    XGLC: "xglc"
+    WYBS: "wybs"
+
+quotation_detail:
+  # 报价单明细表 (UF_HTJGKST_DT1)
+  table_name: "ECOLOGY.uf_htjgkst_dt1"
+  primary_key: "ID"
+  foreign_key: "MAINID"
+  mapping:
+    # 系统字段
+    ID: "id"
+    MAINID: "mainid"
+    # 业务字段
+    WYBS: "wybs"
+    LYXH: "lyxh"
+    LSH: "lsh"
+    DJZ: "djz"
+    DJZMC: "djzmc"
+    WLDM: "wldm"
+    WLMS: "wlms"
+    SFWC: "sfwc"
+    GG: "gg"
+    DW: "dw"
+    JGMS: "jgms"
+    LSJ: "lsj"
+    BZJXJ: "bzjxj"
+    GHJY: "ghjy"
+    ZXKHKPDJY: "zxkhkpdjy"
+    JSJ: "jsj"
+    KLBFB: "klbfb"
+    YHFDBFB: "yhfdbfb"
+    BZ: "bz"
+    SFJL: "sfjl"
+    SFJJ: "sfjj"
+    TSJGSM: "tsjgsm"
+    JGGXBJ: "jggxbj"
+    SJJD: "sjjd"
+    SJSJ: "sjsj"
+    SFTQSJ: "sftqsj"
+    XZXJG: "xzxjg"
+    TPJ: "tpj"
+    SCZDJJC: "sczdjjc"
+    SCZDJFJC: "sczdjfjc"
+    BZJXJJC: "bzjxjjc"
+    BZJXJFJC: "bzjxjfjc"
+    SFTPSYBJG: "sftpsybjg"
+    JCZBJ: "jczbj"
+    JCJXJ: "jcjxj"
+    SJLX: "sjlx"
+    SJKH: "sjkkh"
+    SJKHZD: "sjkkhzd"
+    CPXF: "cpxf"
+    PP: "pp"
+    JYTC: "jytc"
+    XMJC: "xmjc"
+    JGJCY: "jgjcy"
+
+# 泛微字段ID映射 (用于前端展示)
+form_field_ids:
+  # 明细表字段ID
+  customer_subject: -174409  # 客户主体
+  lsh: -174410  # 流水号
+  wybs_detail: -174411  # 主键标识
+  lyxh: -174412  # 序号
+  djz: -174413  # 等级
+  djzmc: -174414  # 等级名称
+  wldm: -174415  # 物料代码
+  wlms: -174416  # 物料描述
+  sfwc: -174417  # 是否完成
+  gg: -174418  # 规格
+  dw: -174419  # 单位
+  jgms: -174420  # 价格描述
+  lsj: -174421  # 零售价
+  bzjxj: -174422  # 标准价(升级价)
+  ghjy: -174423  # 供货价
+  zxkhkpdjy: -174424  # 执行客户开单价(代理价)
+  jsj: -174425  # 结算价
+  klbfb: -174426  # 扣率百分比
+  yhfdbfb: -174427  # 优惠幅度百分比
+  bz: -174428  # 备注
+  sfjl: -174429  # 是否记录
+  sfjj: -174430  # 是否计价
+  tsjgsm: -174431  # 特殊价格说明
+  jggxbj: -174432  # 价格是否有效
+  sjjd: -174433  # 税前几点
+  sjsj: -174434  # 税前税价
+  sftqsj: -174435  # 是否提取税价
+  xzxjg: -174436  # 税后总价格
+  tpj: -174437  # 调票价
+  sczdjjc: -174438  # 市场指导价(基础)
+  sczdjfjc: -174439  # 市场指导价(加价)
+  bzjxjjc: -174440  # 标准升级价(基础)
+  bzjxjfjc: -174441  # 标准升级价(加价)
+  sftpsybjg: -174442  # 是否提取市场报价
+  jczbj: -174443  # 基础报价
+  jcjxj: -174444  # 基础净价
+  sjlx: -174445  # 数据类型
+  sjkkh: -174446  # 客户
+  sjkkhzd: -174447  # 客户组
+  cpxf: -174448  # 产品型号
+  pp: -174449  # 品牌
+  jytc: -174450  # 业态
+  xmjc: -174451  # 项目简称
+  jgjcy: -174452  # 价格间差异
+  # 主表字段ID
+  wybs_main: -174453  # WYBS(主表)
+  lcbh_field: -174406  # 流程编号
+  htbh_field: -174407  # 合同编号
+  xglc_field: -174408  # 相关流程
