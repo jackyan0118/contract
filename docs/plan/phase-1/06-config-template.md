@@ -30,6 +30,8 @@ app:
 database:
   # Oracle 连接字符串格式：oracle://user:password@host:1521/service_name
   dsn: "oracle://user:password@localhost:1521/ORCL"
+  # Oracle Schema/用户，用于查询表时指定前缀（如 "KHB_USER"）
+  schema: ""
   min_connections: 2
   max_connections: 10
   pool_increment: 1
@@ -70,6 +72,8 @@ APP_PORT=8000
 # Oracle 连接字符串
 # 格式：oracle://user:password@host:1521/service_name
 DB_DSN=oracle://user:password@localhost:1521/ORCL
+# Oracle Schema/用户，用于查询表时指定前缀（如 "KHB_USER"）
+DB_SCHEMA=
 
 # 连接池配置
 DB_MIN_CONNECTIONS=2
@@ -339,6 +343,7 @@ APP_DEBUG=true
 APP_PORT=8000
 LOG_LEVEL=DEBUG
 DB_DSN=oracle://dev_user:dev_pass@dev-db:1521/DEVDB
+DB_SCHEMA=DEV_USER
 ```
 
 ### 测试环境 (.env.test)
@@ -348,6 +353,7 @@ APP_DEBUG=false
 APP_PORT=8000
 LOG_LEVEL=INFO
 DB_DSN=oracle://test_user:test_pass@test-db:1521/TESTDB
+DB_SCHEMA=TEST_USER
 ```
 
 ### 生产环境 (.env.production)
@@ -357,6 +363,7 @@ APP_DEBUG=false
 APP_PORT=8000
 LOG_LEVEL=WARNING
 DB_DSN=oracle://prod_user:prod_pass@prod-db:1521/PRODDB
+DB_SCHEMA=PROD_USER
 DB_MAX_CONNECTIONS=20
 ```
 

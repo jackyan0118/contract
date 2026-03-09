@@ -46,6 +46,9 @@ __all__ = [
 ```python
 """数据库配置模块."""
 
+from __future__ import annotations
+
+import threading
 from dataclasses import dataclass
 from typing import Optional
 
@@ -59,26 +62,43 @@ class DatabaseConfig:
     """数据库配置类."""
 
     dsn: str
-    min_connections: int
-    max_connections: int
-    pool_increment: int
-    connect_timeout: int
-    command_timeout: int
+    schema: str = ""  # Oracle Schema/用户
+    min_connections: int = 2
+    max_connections: int = 10
+    pool_increment: int = 1
+    connect_timeout: int = 30
+    command_timeout: int = 60
     max_lifetime: int = 3600  # 连接最大生命周期（秒）
     retry_attempts: int = 3   # 重试次数
     retry_delay: float = 0.5  # 重试延迟（秒）
 
     @classmethod
-    def from_settings(cls, settings: DatabaseSettings) -> "DatabaseConfig":
+    def from_settings(cls, settings: DatabaseSettings) -> DatabaseConfig:
         """从应用设置创建配置."""
         return cls(
             dsn=settings.get_dsn(),
+            schema=settings.schema,  # Oracle Schema
             min_connections=settings.min_connections,
             max_connections=settings.max_connections,
             pool_increment=settings.pool_increment,
             connect_timeout=settings.connect_timeout,
             command_timeout=settings.command_timeout,
         )
+
+    def get_qualified_table(self, table_name: str) -> str:
+        """获取带 schema 的表名.
+
+        Args:
+            table_name: 原始表名
+
+        Returns:
+            带 schema 的表名，如 "schema.table_name"
+        """
+        if not self.schema:
+            return table_name
+        if "." in table_name:  # 已有 schema 前缀
+            return table_name
+        return f"{self.schema}.{table_name}"
 
     def to_oracledb_params(self) -> dict:
         """转换为 oracledb 连接参数（安全方式）."""
@@ -118,14 +138,17 @@ class DatabaseConfig:
 
 # 全局配置实例
 _config: Optional[DatabaseConfig] = None
+_config_lock = threading.Lock()
 
 
 def get_database_config() -> DatabaseConfig:
-    """获取数据库配置实例."""
+    """获取数据库配置实例（线程安全单例）."""
     global _config
     if _config is None:
-        from src.config import settings as app_settings
-        _config = DatabaseConfig.from_settings(app_settings.database)
+        with _config_lock:
+            if _config is None:
+                from src.config import settings as app_settings
+                _config = DatabaseConfig.from_settings(app_settings.database)
     return _config
 ```
 
@@ -134,6 +157,9 @@ def get_database_config() -> DatabaseConfig:
 ```python
 """数据库连接池管理器."""
 
+from __future__ import annotations
+
+import os
 import threading
 import time
 from contextlib import contextmanager
@@ -171,7 +197,6 @@ class ConnectionPool:
                 params = db_config.to_oracledb_params()
 
                 # 根据 CPU 核心数自动计算最大连接数
-                import os
                 cpu_count = os.cpu_count() or 4
                 max_conn = max(db_config.max_connections, cpu_count * 2)
 
@@ -194,13 +219,16 @@ class ConnectionPool:
                     },
                 )
             except oracledb.Error as e:
-                logger.error(f"数据库连接池初始化失败")
+                logger.error("数据库连接池初始化失败")
                 raise ConnectionException(reason="数据库连接池初始化失败")
 
     def get_connection(self, retry: bool = True) -> oracledb.Connection:
-        """获取数据库连接（带重试机制）."""
+        """获取数据库连接（带重试机制，自动初始化）."""
+        # 自动初始化（懒加载，线程安全）
         if not self._initialized:
-            self.initialize()
+            with self._lock:
+                if not self._initialized:
+                    self.initialize()
 
         db_config = get_database_config()
         attempts = db_config.retry_attempts if retry else 1
@@ -215,10 +243,13 @@ class ConnectionPool:
                 last_error = e
                 if attempt < attempts - 1:
                     delay = db_config.retry_delay * (2 ** attempt)  # 指数退避
-                    logger.warning(f"获取连接失败，{delay:.1f}秒后重试 ({attempt + 1}/{attempts})")
+                    logger.warning(
+                        "获取连接失败，将重试",
+                        context={"attempt": attempt + 1, "total": attempts, "delay_seconds": delay},
+                    )
                     time.sleep(delay)
                 else:
-                    logger.error(f"获取数据库连接失败，已重试{attempts}次")
+                    logger.error("获取数据库连接失败，已重试多次")
 
         raise PoolExhaustedException(detail={"reason": "获取连接失败"})
 
@@ -228,8 +259,8 @@ class ConnectionPool:
             try:
                 self._pool.release(conn)
                 logger.debug("释放数据库连接成功")
-            except oracledb.Error as e:
-                logger.warning(f"释放数据库连接失败")
+            except oracledb.Error:
+                logger.warning("释放数据库连接失败")
 
     @contextmanager
     def connection(self) -> Generator[oracledb.Connection, None, None]:
@@ -248,8 +279,8 @@ class ConnectionPool:
             try:
                 self._pool.close()
                 logger.info("数据库连接池已关闭")
-            except oracledb.Error as e:
-                logger.warning(f"关闭数据库连接池失败")
+            except oracledb.Error:
+                logger.warning("关闭数据库连接池失败")
             finally:
                 self._pool = None
                 self._initialized = False
@@ -291,6 +322,9 @@ def get_connection_pool() -> ConnectionPool:
 ```python
 """数据库健康检查模块."""
 
+from __future__ import annotations
+
+import threading
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -312,7 +346,7 @@ class HealthStatus:
 
 
 class HealthChecker:
-    """数据库健康检查器."""
+    """数据库健康检查器（线程安全）."""
 
     def __init__(self, cache_ttl: int = 30):
         """初始化健康检查器.
@@ -323,14 +357,21 @@ class HealthChecker:
         self._cache_ttl = cache_ttl
         self._last_check_time: Optional[datetime] = None
         self._last_status: Optional[HealthStatus] = None
+        self._lock = threading.Lock()
 
     def check(self, force: bool = False) -> HealthStatus:
-        """执行健康检查（带缓存）."""
-        # 检查缓存是否有效
+        """执行健康检查（带缓存，线程安全）."""
+        # 检查缓存是否有效（无需加锁，因为读取是原子的）
         if not force and self._is_cache_valid():
             return self._last_status
 
-        start_time = time.time()
+        # 加锁保护，避免并发执行
+        with self._lock:
+            # 双重检查
+            if not force and self._is_cache_valid():
+                return self._last_status
+
+            start_time = time.time()
         pool = get_connection_pool()
 
         try:
@@ -373,17 +414,20 @@ class HealthChecker:
 
 # 全局健康检查器
 _checker: Optional[HealthChecker] = None
+_checker_lock = threading.Lock()
 
 
 def check_database_health(force: bool = False) -> HealthStatus:
-    """执行数据库健康检查.
+    """执行数据库健康检查（线程安全）.
 
     Args:
         force: 是否强制执行检查（忽略缓存）
     """
     global _checker
     if _checker is None:
-        _checker = HealthChecker(cache_ttl=30)
+        with _checker_lock:
+            if _checker is None:
+                _checker = HealthChecker(cache_ttl=30)
     return _checker.check(force=force)
 ```
 
@@ -432,13 +476,13 @@ print(f"Response time: {health.response_time_ms}ms")
 
 ## 验收标准
 
-- [ ] 连接池可正常初始化
-- [ ] 可获取和释放数据库连接
-- [ ] 连接上下文管理器正常工作（游标自动关闭）
-- [ ] 健康检查接口正常（带缓存）
-- [ ] 连接池关闭功能正常
-- [ ] 日志记录完整（不泄露敏感信息）
-- [ ] 支持重试机制
+- [x] 连接池可正常初始化
+- [x] 可获取和释放数据库连接
+- [x] 连接上下文管理器正常工作（游标自动关闭）
+- [x] 健康检查接口正常（带缓存）
+- [x] 连接池关闭功能正常
+- [x] 日志记录完整（不泄露敏感信息）
+- [x] 支持重试机制
 
 ---
 

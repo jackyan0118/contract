@@ -46,6 +46,7 @@ class DatabaseSettings(BaseSettings):
         default=SecretStr(""),
         description="Oracle 连接字符串",
     )
+    db_schema: str = Field(default="", description="Oracle Schema/用户，用于查询表时指定前缀")
     min_connections: int = Field(default=2, description="最小连接数", ge=1, le=100)
     max_connections: int = Field(default=10, description="最大连接数", ge=1, le=100)
     pool_increment: int = Field(default=1, description="连接池增量", ge=1)
