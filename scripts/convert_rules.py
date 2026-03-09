@@ -14,7 +14,7 @@ os.chdir(PROJECT_ROOT)
 
 
 def load_db_brands() -> dict:
-    """从数据库加载品牌映射 (ID -> 名称)."""
+    """从数据库加载品牌映射 (DM代码 -> 名称)."""
     import oracledb
 
     oracledb.init_oracle_client(lib_dir='/opt/oracle/instantclient')
@@ -31,15 +31,19 @@ def load_db_brands() -> dict:
     )
 
     cursor = conn.cursor()
-    cursor.execute("SELECT ID, MS FROM ECOLOGY.UF_PP WHERE MS IS NOT NULL ORDER BY ID")
+    # 使用 DM 字段作为品牌代码
+    cursor.execute("SELECT DM, MS FROM ECOLOGY.UF_PP WHERE DM IS NOT NULL AND MS IS NOT NULL")
     rows = cursor.fetchall()
 
     brands = {}
     for row in rows:
-        brand_id = row[0]
+        brand_code = row[0]
         brand_name = row[1]
-        if brand_id and brand_name:
-            brands[brand_id] = brand_name
+        if brand_code and brand_name:
+            try:
+                brands[int(brand_code)] = brand_name
+            except (ValueError, TypeError):
+                pass
 
     cursor.close()
     conn.close()
