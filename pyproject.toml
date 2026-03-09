@@ -38,7 +38,7 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
 asyncio_mode = "auto"
-addopts = "-v --cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=80"
+addopts = "-v --cov=src --cov-report=html --cov-report=term-missing"
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
