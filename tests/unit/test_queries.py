@@ -345,6 +345,10 @@ class TestGetQuotationDetails:
                 Decimal("80.00"),  # JCJXJ
                 Decimal("5.00"),  # JGJCY
                 "特殊价格说明",  # TSJGSM
+                # 新增字段（本年供货价类型、是否集采）
+                "供货类型A",  # BNGHJLX
+                1,  # BNGHJLXZ
+                1,  # SFJC
             ),
         ]
 

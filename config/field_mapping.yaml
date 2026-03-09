@@ -78,6 +78,10 @@ quotation_detail:
     JYTC: "jytc"
     XMJC: "xmjc"
     JGJCY: "jgjcy"
+    # 新增字段（本年供货价类型、是否集采）
+    BNGHJLX: "bnghjlx"
+    BNGHJLXZ: "bnghjlxz"
+    SFJC: "sfjc"
 
 # 泛微字段ID映射 (用于前端展示)
 form_field_ids:

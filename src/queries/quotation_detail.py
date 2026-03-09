@@ -56,6 +56,10 @@ _DETAIL_COLUMNS = [
     "JGJCY",
     # 其他扩展字段
     "TSJGSM",
+    # 新增字段（本年供货价类型、是否集采）
+    "BNGHJLX",
+    "BNGHJLXZ",
+    "SFJC",
 ]
 
 # 明细查询 SQL 模板

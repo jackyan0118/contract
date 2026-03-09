@@ -155,6 +155,9 @@ class DataTransformer:
         "sftqsj",    # 是否提前设价
         "sftpsybjg", # 是否突破事业部价格
         "sjlx",      # 设价类型
+        # 新增字段
+        "bnghjlxz",  # 本年供货价类型值
+        "sfjc",      # 是否集采
     ])
 
     def __init__(self, mapping_config: FieldMappingConfig | None = None):
@@ -271,6 +274,10 @@ class DataTransformer:
             jytc=result.get("jytc"),
             xmjc=result.get("xmjc"),
             tsjgsm=result.get("tsjgsm"),
+            # 新增字段（本年供货价类型、是否集采）
+            bnghjlx=result.get("bnghjlx"),
+            bnghjlxz=result.get("bnghjlxz"),
+            sfjc=result.get("sfjc"),
         )
 
     def transform_quotation_details(

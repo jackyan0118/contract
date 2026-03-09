@@ -127,6 +127,10 @@ class TestQuotationDetail:
             jytc="业态1",
             xmjc="项目X",
             tsjgsm="特殊价格说明",
+            # 新增字段（本年供货价类型、是否集采）
+            bnghjlx="供货类型A",
+            bnghjlxz=1,
+            sfjc=1,
         )
 
         assert detail.id == 1
@@ -177,6 +181,10 @@ class TestQuotationDetail:
         assert detail.jytc == "业态1"
         assert detail.xmjc == "项目X"
         assert detail.tsjgsm == "特殊价格说明"
+        # 新增字段（本年供货价类型、是否集采）
+        assert detail.bnghjlx == "供货类型A"
+        assert detail.bnghjlxz == 1
+        assert detail.sfjc == 1
 
     def test_detail_decimal_fields(self):
         """测试明细的价格字段可以接受 Decimal 类型."""

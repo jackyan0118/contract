@@ -106,6 +106,10 @@ class QuotationDetail:
     jytc: Optional[str] = None  # 业态
     xmjc: Optional[str] = None  # 项目简称
     tsjgsm: Optional[str] = None  # 特殊价格说明
+    # 新增字段（本年供货价类型、是否集采）
+    bnghjlx: Optional[str] = None  # 本年供货价类型 (浏览按钮)
+    bnghjlxz: Optional[int] = None  # 本年供货价类型值
+    sfjc: Optional[int] = None  # 是否集采
 
 
 @dataclass(frozen=True)
