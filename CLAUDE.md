@@ -81,6 +81,12 @@ src/
 - **Pool**: oracledb create_pool() for connection management
 - **Tables**: Quote main table + `uf_htjgkst_dt1` (quote details)
 
+### 泛微字段规则
+
+- **选择框(是否)**：0 = 是，1 = 否，空值 = 否
+  - 例如：`是否集采`字段：0=集采，1=非集采
+  - 查询时使用：`NVL(字段, 1) = 0` 表示"是"
+
 ### Templates
 
 - 35+ Word templates in `docs/template/`

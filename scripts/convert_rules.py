@@ -13,44 +13,6 @@ sys.path.insert(0, str(PROJECT_ROOT))
 os.chdir(PROJECT_ROOT)
 
 
-def load_db_brands() -> dict:
-    """从数据库加载品牌映射 (DM代码 -> 名称)."""
-    import oracledb
-
-    oracledb.init_oracle_client(lib_dir='/opt/oracle/instantclient')
-
-    from src.database.config import get_database_config
-
-    db_config = get_database_config()
-    params = db_config.to_oracledb_params()
-
-    conn = oracledb.connect(
-        user=params.get("user"),
-        password=params.get("password"),
-        dsn=params.get("dsn"),
-    )
-
-    cursor = conn.cursor()
-    # 使用 DM 字段作为品牌代码
-    cursor.execute("SELECT DM, MS FROM ECOLOGY.UF_PP WHERE DM IS NOT NULL AND MS IS NOT NULL")
-    rows = cursor.fetchall()
-
-    brands = {}
-    for row in rows:
-        brand_code = row[0]
-        brand_name = row[1]
-        if brand_code and brand_name:
-            try:
-                brands[int(brand_code)] = brand_name
-            except (ValueError, TypeError):
-                pass
-
-    cursor.close()
-    conn.close()
-
-    return brands
-
-
 def load_excel_rules(excel_path: str) -> tuple:
     """加载 Excel 规则文件.
 
@@ -69,8 +31,31 @@ def load_excel_rules(excel_path: str) -> tuple:
     return df, df_valid
 
 
-def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, db_brands: dict = None) -> dict:
+def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame) -> dict:
     """转换为 YAML 结构."""
+    import os
+    import sys
+
+    # 导入数据库模块
+    project_root = Path(__file__).parent.parent
+    sys.path.insert(0, str(project_root))
+    os.chdir(project_root)
+
+    import oracledb
+    from src.database.config import get_database_config
+
+    # 初始化数据库连接
+    oracledb.init_oracle_client(lib_dir='/opt/oracle/instantclient')
+    db_config = get_database_config()
+    params = db_config.to_oracledb_params()
+
+    conn = oracledb.connect(
+        user=params.get("user"),
+        password=params.get("password"),
+        dsn=params.get("dsn"),
+    )
+    cursor = conn.cursor()
+
     templates = []
     product_categories = {}
 
@@ -81,21 +66,11 @@ def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, 
         if pd.notna(product_code) and pd.notna(product):
             product_categories[int(product_code)] = product
 
-    # 从全部 Excel 数据提取品牌映射（编号 -> 名称）
-    excel_brands = {}
-    for _, row in df_all.iterrows():
-        brand_code = row["品牌"]
-        if pd.notna(brand_code):
-            brand_code = int(brand_code)
-            brand_name = db_brands.get(brand_code) if db_brands else None
-            if brand_name and brand_code not in excel_brands:
-                excel_brands[brand_code] = brand_name
-
     # 从全部 Excel 数据提取定价组映射（编号 -> 名称，包括非数字编号）
     excel_pricing_groups = {}
     for _, row in df_all.iterrows():
-        code = row["定价组"]
-        name = row["Unnamed: 5"]
+        code = row["定价组编码"]
+        name = row["定价组名称"]
         if pd.notna(code) and pd.notna(name):
             try:
                 code = int(code)
@@ -103,6 +78,17 @@ def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, 
             except (ValueError, TypeError):
                 # 非数字编号如 A1, A2, A3, A4
                 excel_pricing_groups[str(code)] = name
+
+    # 从 Excel 提取品牌映射（编号 -> 名称）
+    brand_mapping = {}
+    for _, row in df_all.iterrows():
+        brand_code = row["品牌编码"]
+        brand_name = row["品牌名称"]
+        if pd.notna(brand_code) and pd.notna(brand_name):
+            try:
+                brand_mapping[int(brand_code)] = brand_name
+            except (ValueError, TypeError):
+                pass
 
     # 从有模板的数据生成规则
     for _, row in df_templates.iterrows():
@@ -116,8 +102,8 @@ def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, 
             product_code = None
 
         # 定价组信息
-        pricing_group_code = row["定价组"] if pd.notna(row["定价组"]) else None
-        pricing_group_name = row["Unnamed: 5"] if pd.notna(row["Unnamed: 5"]) else None
+        pricing_group_code = row["定价组编码"] if pd.notna(row["定价组编码"]) else None
+        pricing_group_name = row["定价组名称"] if pd.notna(row["定价组名称"]) else None
 
         # 构建条件
         conditions = [{"产品细分编号": product_code, "产品细分": product}]
@@ -132,14 +118,24 @@ def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, 
             conditions[0]["定价组编号"] = code_key
             conditions[0]["定价组名称"] = pricing_group_name
 
-        # 是否集采
+        # 是否集采: 0=是(集采), 1=否(非集采), 空=1(否)
         if pd.notna(row["是否集采"]) and row["是否集采"] not in ["空", ""]:
-            jicai_map = {"是": 1, "否": 0}
-            conditions[0]["是否集采"] = jicai_map.get(row["是否集采"])
+            jicai_map = {"是": 0, "否": 1}
+            conditions[0]["是否集采"] = jicai_map.get(row["是否集采"], 1)  # 默认1(否)
+        else:
+            # 空值默认为否(非集采)
+            conditions[0]["是否集采"] = 1
 
         # 供货价类型
         if pd.notna(row["本年供货价类型"]):
             conditions[0]["供货价类型"] = row["本年供货价类型"]
+
+        # 品牌
+        if pd.notna(row["品牌编码"]):
+            brand_code = int(row["品牌编码"])
+            brand_name = row["品牌名称"] if pd.notna(row["品牌名称"]) else brand_mapping.get(brand_code, f"品牌{brand_code}")
+            conditions[0]["品牌编号"] = brand_code
+            conditions[0]["品牌名称"] = brand_name
 
         # 排序规则
         sort_rule = row["排序规则"] if pd.notna(row["排序规则"]) else None
@@ -160,23 +156,14 @@ def convert_to_yaml_structure(df_all: pd.DataFrame, df_templates: pd.DataFrame, 
 
         templates.append(template_entry)
 
-    # 分离数字和非数字键
-    numeric_groups = {k: v for k, v in excel_pricing_groups.items() if isinstance(k, int)}
-    string_groups = {k: v for k, v in excel_pricing_groups.items() if isinstance(k, str)}
-
-    # 排序：数字键和非数字键分开
-    sorted_numeric = dict(sorted(numeric_groups.items()))
-    sorted_string = dict(sorted(string_groups.items()))
-    sorted_pricing = {**sorted_numeric, **sorted_string}
-
-    # 构建 YAML 结构
+    # 构建 YAML 结构（不排序，保留 Excel 原始顺序）
     yaml_data = {
         "version": "1.0",
         "更新日期": "2026-03-09",
         "说明": "模板匹配规则配置文件 - 由 Excel 自动生成",
-        "产品细分映射": dict(sorted(product_categories.items())),
-        "定价组映射": sorted_pricing,
-        "品牌映射": dict(sorted(excel_brands.items())) if excel_brands else {},
+        "产品细分映射": product_categories,
+        "定价组映射": excel_pricing_groups,
+        "品牌映射": brand_mapping,
         "模板规则": templates,
     }
 
@@ -211,17 +198,8 @@ def main():
     df_all, df_templates = load_excel_rules(str(excel_path))
     print(f"加载 {len(df_templates)} 条规则, {len(df_all)} 行数据")
 
-    # 从数据库加载品牌映射
-    print("从数据库加载品牌...")
-    try:
-        db_brands = load_db_brands()
-        print(f"品牌数量: {len(db_brands)}")
-    except Exception as e:
-        print(f"数据库连接失败: {e}")
-        db_brands = {}
-
     # 转换
-    yaml_data = convert_to_yaml_structure(df_all, df_templates, db_brands)
+    yaml_data = convert_to_yaml_structure(df_all, df_templates)
 
     # 生成文件
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -231,7 +209,6 @@ def main():
     print(f"  - 模板数量: {len(yaml_data['模板规则'])}")
     print(f"  - 产品细分: {len(yaml_data['产品细分映射'])}")
     print(f"  - 定价组: {len(yaml_data['定价组映射'])}")
-    print(f"  - 品牌: {len(yaml_data['品牌映射'])}")
 
 
 if __name__ == "__main__":
