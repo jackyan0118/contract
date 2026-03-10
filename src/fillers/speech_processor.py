@@ -17,6 +17,7 @@ class Speech:
     type: str  # conditional, fixed
     mutex_group: Optional[str] = None
     variables: Dict[str, str] = field(default_factory=dict)
+    conditions: List[FilterCondition] = field(default_factory=list)
 
 
 class SpeechProcessor:

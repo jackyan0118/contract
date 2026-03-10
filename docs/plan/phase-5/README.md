@@ -809,12 +809,12 @@ class Condition(BaseModel):
 
 | 序号 | 任务 | 产出物 | 依赖 | 状态 |
 |------|------|--------|------|------|
-| 5.9 | 模板配置加载器 | `src/config/template_loader.py` | Phase 5 基础 | ⬜ 待开发 |
-| 5.10 | 统一字段映射 | `src/fillers/constants.py` | 5.9 | ⬜ 待开发 |
-| 5.11 | detail_filter 集成 | 合并到 DocumentGenerator | 5.9, 5.10 | ⬜ 待开发 |
-| 5.12 | 话术完整集成 | 合并到 DocumentGenerator | 5.9 | ⬜ 待开发 |
-| 5.13 | Pydantic 模型优化 | 重构 data_filler.py | 5.10 | ⬜ 待开发 |
-| 5.14 | 补充单元测试 | tests/unit/test_*.py | 5.9-5.13 | ⬜ 待开发 |
+| 5.9 | 模板配置加载器 | `src/config/template_loader.py` | Phase 5 基础 | ✅ 已完成 |
+| 5.10 | 统一字段映射 | `src/fillers/constants.py` | 5.9 | ✅ 已完成 |
+| 5.11 | detail_filter 集成 | 合并到 DocumentGenerator | 5.9, 5.10 | ✅ 已完成 |
+| 5.12 | 话术完整集成 | 合并到 DocumentGenerator | 5.9 | ✅ 已完成 |
+| 5.13 | Pydantic 模型优化 | 重构 data_filler.py | 5.10 | ✅ 已完成（使用 TemplateMetadataModel） |
+| 5.14 | 补充单元测试 | tests/unit/test_*.py | 5.9-5.13 | ✅ 已完成（45个测试） |
 
 ---
 

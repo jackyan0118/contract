@@ -11,10 +11,12 @@ from datetime import datetime
 from docx import Document
 
 from src.readers.word_template_reader import WordTemplateReader
-from src.fillers.data_filler import DataFiller
+from src.fillers.data_filler import DataFiller, FilterCondition
 from src.fillers.row_expander import RowExpander
 from src.fillers.format_preserver import FormatPreserver
-from src.fillers.speech_processor import SpeechProcessor
+from src.fillers.speech_processor import SpeechProcessor, Speech
+from src.fillers.constants import DEFAULT_SPEECH_VARIABLES, HEADER_TO_FIELD
+from src.config.template_loader import TemplateLoader, TemplateMetadataModel
 from src.models.template_rule import TemplateRule
 from src.exceptions import DocumentGenerateException
 
@@ -33,9 +35,12 @@ class GenerationResult:
 class DocumentGenerator:
     """文档生成器"""
 
-    def __init__(self, template_dir: str = "docs/template"):
+    def __init__(self, template_dir: str = "docs/template",
+                 config_dir: str = "config/template_metadata/templates"):
         self.template_dir = Path(template_dir)
+        self.config_dir = Path(config_dir)
         self.template_reader = WordTemplateReader(template_dir)
+        self.template_loader = TemplateLoader(config_dir)
         self.data_filler = DataFiller()
         self.row_expander = RowExpander()
         self.format_preserver = FormatPreserver()
@@ -59,6 +64,15 @@ class DocumentGenerator:
         Returns:
             GenerationResult: 生成结果
         """
+        # 尝试加载模板配置
+        template_config: Optional[TemplateMetadataModel] = None
+        try:
+            template_config = self.template_loader.load(template.id)
+        except FileNotFoundError:
+            logger.debug(f"No template config found for {template.id}, using default")
+        except Exception as e:
+            logger.warning(f"Failed to load template config: {e}")
+
         try:
             template_path = self.template_dir / template.file
 
@@ -77,8 +91,8 @@ class DocumentGenerator:
             # 打开文档
             doc = Document(output_path)
 
-            # 填充数据
-            self._fill_document(doc, quote_data, detail_data_list)
+            # 填充数据（带模板配置）
+            self._fill_document(doc, template_config, quote_data, detail_data_list)
 
             # 保存文档
             doc.save(output_path)
@@ -102,29 +116,48 @@ class DocumentGenerator:
     def _fill_document(
         self,
         doc: Document,
+        template_config: Optional[TemplateMetadataModel],
         quote_data: Dict[str, Any],
         detail_data_list: List[Dict[str, Any]]
     ) -> None:
-        """填充文档内容"""
+        """填充文档内容
+
+        Args:
+            doc: Word 文档对象
+            template_config: 模板配置（可选）
+            quote_data: 报价单主表数据
+            detail_data_list: 明细数据列表
+        """
         # 1. 填充段落占位符
-        self._fill_paragraphs(doc, quote_data)
+        self._fill_paragraphs(doc, template_config, quote_data)
 
-        # 2. 填充表格
-        self._fill_tables(doc, detail_data_list)
+        # 2. 填充表格（支持 detail_filter）
+        self._fill_tables(doc, template_config, detail_data_list)
 
-        # 3. 处理话术
-        self._process_speeches(doc, quote_data)
+        # 3. 处理话术（完整集成）
+        self._process_speeches(doc, template_config, quote_data)
 
-    def _fill_paragraphs(self, doc: Document, data: Dict[str, Any]) -> None:
-        """填充段落占位符"""
-        # 定义标准占位符
-        placeholders = {
-            "标题": data.get("标题", ""),
-            "副标题": data.get("副标题", ""),
-            "金额单位": data.get("金额单位", "元"),
-            "报价单号": data.get("报价单号", ""),
-            "客户名称": data.get("客户名称", ""),
-        }
+    def _fill_paragraphs(self, doc: Document,
+                         template_config: Optional[TemplateMetadataModel],
+                         data: Dict[str, Any]) -> None:
+        """填充段落占位符
+
+        Args:
+            doc: Word 文档对象
+            template_config: 模板配置（可选）
+            data: 数据字典
+        """
+        # 获取段落占位符配置（优先使用模板配置，否则使用默认值）
+        if template_config and template_config.paragraph_placeholders:
+            placeholders = template_config.paragraph_placeholders
+        else:
+            placeholders = {
+                "标题": data.get("标题", ""),
+                "副标题": data.get("副标题", ""),
+                "金额单位": data.get("金额单位", "元"),
+                "报价单号": data.get("报价单号", ""),
+                "客户名称": data.get("客户名称", ""),
+            }
 
         for para in doc.paragraphs:
             text = para.text
@@ -145,8 +178,16 @@ class DocumentGenerator:
                 if para.runs:
                     para.runs[0].text = text
 
-    def _fill_tables(self, doc: Document, data_list: List[Dict[str, Any]]) -> None:
-        """填充表格"""
+    def _fill_tables(self, doc: Document,
+                     template_config: Optional[TemplateMetadataModel],
+                     data_list: List[Dict[str, Any]]) -> None:
+        """填充表格
+
+        Args:
+            doc: Word 文档对象
+            template_config: 模板配置（可选）
+            data_list: 明细数据列表
+        """
         for table in doc.tables:
             # 查找明细表
             is_detail_table = False
@@ -167,11 +208,75 @@ class DocumentGenerator:
             if not is_detail_table:
                 continue
 
-            # 解析列配置
-            columns = self._parse_table_columns(table)
+            # 应用 detail_filter 过滤数据
+            filtered_data = self._apply_detail_filter(template_config, data_list)
+
+            # 解析列配置（优先使用模板配置）
+            if template_config and template_config.table:
+                columns = self._parse_table_columns_from_config(template_config.table)
+            else:
+                columns = self._parse_table_columns(table)
 
             # 填充数据
-            self.row_expander.expand(table, data_list, columns, start_row)
+            self.row_expander.expand(table, filtered_data, columns, start_row)
+
+    def _apply_detail_filter(self,
+                            template_config: Optional[TemplateMetadataModel],
+                            data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """应用明细过滤规则
+
+        Args:
+            template_config: 模板配置
+            data_list: 原始数据列表
+
+        Returns:
+            过滤后的数据列表
+        """
+        if not template_config or not template_config.detail_filter:
+            return data_list
+
+        filter_config = template_config.detail_filter
+
+        if not filter_config.filter_rules:
+            return data_list
+
+        # 合并所有规则的过滤条件
+        all_conditions = []
+        for rule in filter_config.filter_rules:
+            for cond in rule.conditions:
+                all_conditions.append(FilterCondition(
+                    field=cond.field,
+                    operator=cond.operator,
+                    value=cond.value
+                ))
+
+        if not all_conditions:
+            return data_list
+
+        # 使用 DataFiller 过滤
+        filtered = self.data_filler.filter_data(data_list, all_conditions)
+        logger.info(f"Filtered {len(data_list)} rows to {len(filtered)} rows")
+        return filtered
+
+    def _parse_table_columns_from_config(self, table_config) -> List[Dict[str, str]]:
+        """从模板配置解析表格列
+
+        Args:
+            table_config: 表格配置模型
+
+        Returns:
+            列配置列表
+        """
+        columns = []
+        for col in table_config.columns:
+            columns.append({
+                "name": col.name,
+                "field": col.source_field,
+                "type": col.type,
+                "transform": col.transform,
+                "params": col.params
+            })
+        return columns
 
     def _parse_table_columns(self, table) -> List[Dict[str, str]]:
         """解析表格列配置"""
@@ -201,40 +306,22 @@ class DocumentGenerator:
         return columns
 
     def _infer_field(self, header_text: str, col_idx: int) -> str:
-        """从表头推断字段"""
-        mapping = {
-            "序号": "序号",
-            "物料编码": "WLDM",
-            "SAP代码": "WLDM",
-            "品名": "WLMS",
-            "产品名称": "WLMS",
-            "简称": "WLMS",
-            "规格": "GG",
-            "规格型号": "GG",
-            "包装规格": "GG",
-            "零售价": "LSJ",
-            "供货价": "GHJY",
-            "产品类别": "CPXF",
-            "分类": "CPXF",
-        }
+        """从表头推断字段
 
-        for key, field in mapping.items():
+        使用 constants.HEADER_TO_FIELD
+        """
+        for key, field in HEADER_TO_FIELD.items():
             if key in header_text:
                 return field
 
         return f"col_{col_idx}"
 
     def _replace_variables(self, text: str, data: Dict[str, Any]) -> str:
-        """替换变量占位符"""
-        # 默认变量
-        variables = {
-            "肝功扣率": "85",
-            "通用扣率": "70",
-            "北极星扣率": "25",
-            "耗材扣率": "50",
-        }
+        """替换变量占位符
 
-        for var_name, default_value in variables.items():
+        使用 constants.DEFAULT_SPEECH_VARIABLES
+        """
+        for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
             placeholder = f"{{{{{var_name}}}}}"
             if placeholder in text:
                 value = data.get(var_name, default_value)
@@ -242,27 +329,68 @@ class DocumentGenerator:
 
         return text
 
-    def _process_speeches(self, doc: Document, data: Dict[str, Any]) -> None:
-        """处理话术占位符"""
-        # 查找话术区域
+    def _process_speeches(self, doc: Document,
+                         template_config: Optional[TemplateMetadataModel],
+                         data: Dict[str, Any]) -> None:
+        """处理话术占位符（完整集成）
+
+        Args:
+            doc: Word 文档对象
+            template_config: 模板配置（可选）
+            data: 数据字典
+        """
+        # 如果没有模板配置，简化处理
+        if not template_config or not template_config.speeches:
+            self._process_speeches_simple(doc)
+            return
+
+        # 转换为 Speech 对象
+        speeches = []
+        for s in template_config.speeches:
+            speech = Speech(
+                id=s.id,
+                type=s.type,
+                content=s.content,
+                mutex_group=s.mutex_group,
+                variables={v.name: v.default for v in s.variables},
+                conditions=[FilterCondition(field=c.field, operator=c.operator, value=c.value)
+                          for c in s.conditions]
+            )
+            speeches.append(speech)
+
+        # 处理话术
+        speech_contents = self.speech_processor.process_speeches(speeches, data)
+
+        # 填充话术占位符
         for para in doc.paragraphs:
             text = para.text
 
-            # 查找话术标记
-            if "{{#话术}}" in text:
-                # 简化处理：查找所有条件话术占位符
-                # 实际应该根据模板配置生成话术
-                speech_pattern = r'\{\{(\w+)\}\}'
-                matches = re.findall(speech_pattern, text)
+            if "{{#话术}}" in text or "{{话术}}" in text:
+                # 合并所有话术内容
+                full_speech = "\n".join(speech_contents)
+                text = text.replace("{{#话术}}", "")
+                text = text.replace("{{/话术}}", "")
+                text = text.replace("{{话术}}", full_speech)
 
-                if matches:
-                    # 简化：直接移除占位符
-                    for match in matches:
-                        placeholder = f"{{{{{match}}}}}"
-                        text = text.replace(placeholder, "")
+            if text != para.text:
+                for run in para.runs:
+                    run.text = ""
+                if para.runs:
+                    para.runs[0].text = text
 
-                # 移除标记
-                text = text.replace("{{#话术}}", "").replace("{{/话术}}", "")
+    def _process_speeches_simple(self, doc: Document) -> None:
+        """简化处理话术占位符（无模板配置时）"""
+        for para in doc.paragraphs:
+            text = para.text
+
+            if "{{#话术}}" in text or "{{话术}}" in text:
+                # 简化：直接移除占位符
+                text = text.replace("{{#话术}}", "")
+                text = text.replace("{{/话术}}", "")
+                # 移除话术变量占位符
+                for var_name in DEFAULT_SPEECH_VARIABLES.keys():
+                    placeholder = f"{{{{{var_name}}}}}"
+                    text = text.replace(placeholder, DEFAULT_SPEECH_VARIABLES[var_name])
 
             if text != para.text:
                 for run in para.runs:
