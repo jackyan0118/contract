@@ -479,14 +479,14 @@ speeches:
 
 | 序号 | 任务 | 产出物 | 状态 |
 |------|------|--------|------|
-| 5.1 | Word 模板读取器 | `src/readers/word_template_reader.py` | 待开发 |
-| 5.2 | 表格结构分析 | 合并到5.1 | 待开发 |
-| 5.3 | 数据填充引擎 | `src/fillers/data_filler.py` | 待开发 |
-| 5.4 | 表格行扩展器 | `src/fillers/row_expander.py` | 待开发 |
-| 5.5 | 格式保持器 | `src/fillers/format_preserver.py` | 待开发 |
-| 5.6 | 多模板生成器 | `src/generators/document_generator.py` | 待开发 |
-| 5.7 | 文件打包器 | `src/utils/file_packer.py` | 待开发 |
-| 5.8 | Word 生成单元测试 | `tests/test_document_generator.py` | 待开发 |
+| 5.1 | Word 模板读取器 | `src/readers/word_template_reader.py` | ✅ 已完成 |
+| 5.2 | 表格结构分析 | 合并到5.1 | ✅ 已完成 |
+| 5.3 | 数据填充引擎 | `src/fillers/data_filler.py` | ✅ 已完成 |
+| 5.4 | 表格行扩展器 | `src/fillers/row_expander.py` | ✅ 已完成 |
+| 5.5 | 格式保持器 | `src/fillers/format_preserver.py` | ✅ 已完成 |
+| 5.6 | 多模板生成器 | `src/generators/document_generator.py` | ✅ 已完成 |
+| 5.7 | 文件打包器 | `src/utils/file_packer.py` | ✅ 已完成 |
+| 5.8 | Word 生成单元测试 | `tests/unit/test_document_generator.py` | ✅ 已完成 |
 
 ---
 
