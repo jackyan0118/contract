@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from threading import Lock
-from typing import Any
+from typing import Any, Optional
 
 from src.utils.logger import get_logger
 
