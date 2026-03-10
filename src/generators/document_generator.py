@@ -191,25 +191,42 @@ class DocumentGenerator:
             data_list: 明细数据列表
         """
         for table in doc.tables:
-            # 查找明细表
+            # 查找明细表和话术行
             is_detail_table = False
             template_row_idx = -1
+            speech_row_idx = -1
 
-            # 第一遍：清除所有占位符并找到模板行
+            # 第一遍：清除所有占位符并找到关键行
             for row_idx, row in enumerate(table.rows):
+                row_text = ""
                 for cell in row.cells:
                     for para in cell.paragraphs:
-                        text = para.text
-                        if "{{#明细表}}" in text or "{{/明细表}}" in text:
-                            is_detail_table = True
-                            template_row_idx = row_idx
-                            # 清除标记文本
-                            para.text = text.replace("{{#明细表}}", "").replace("{{/明细表}}", "")
+                        row_text += para.text
+
+                # 检查是否是明细表模板行
+                if "{{#明细表}}" in row_text:
+                    is_detail_table = True
+                    template_row_idx = row_idx
+                    # 清除标记文本
+                    for cell in row.cells:
+                        for para in cell.paragraphs:
+                            para.text = para.text.replace("{{#明细表}}", "").replace("{{/明细表}}", "")
+
+                # 检查是否是话术行
+                if "{{#话术}}" in row_text or "{{话术}}" in row_text:
+                    speech_row_idx = row_idx
 
             if not is_detail_table:
                 continue
 
-            start_row = template_row_idx + 1  # 从模板行之后开始插入
+            start_row = template_row_idx + 1  # 从模板行之后开始插入数据
+
+            # 如果话术行在模板行之后，需要特殊处理
+            # 方案：先记录话术行位置，填充数据后，在最后处理话术
+            speech_row_relative_idx = -1
+            if speech_row_idx > template_row_idx:
+                # 话术行在模板行之后，填充数据后会移到后面
+                speech_row_relative_idx = speech_row_idx - template_row_idx - 1
 
             # 应用 detail_filter 过滤数据
             filtered_data = self._apply_detail_filter(template_config, data_list)
@@ -223,7 +240,7 @@ class DocumentGenerator:
             # 填充数据
             self.row_expander.expand(table, filtered_data, columns, start_row, template_row_idx)
 
-            # 处理话术占位符（表格单元格中）
+            # 处理话术占位符（表格单元格中，包括最后一行）
             self._process_table_speeches(table)
 
     def _apply_detail_filter(self,

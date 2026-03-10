@@ -23,7 +23,8 @@ class RowExpander:
         data_list: List[Dict[str, Any]],
         columns: List[Dict[str, str]],
         start_row: int = 1,
-        template_row_idx: int = -1
+        template_row_idx: int = -1,
+        exclude_rows: list = None
     ) -> None:
         """扩展表格行
 
@@ -33,13 +34,14 @@ class RowExpander:
             columns: 列配置列表
             start_row: 起始行索引（从该行开始插入数据）
             template_row_idx: 模板行索引（作为数据行的格式模板）
+            exclude_rows: 需要排除的行索引列表（这些行不会被扩展）
         """
         if not data_list:
             logger.warning("No data to expand")
             return
 
         # 确保有足够的行
-        self._ensure_rows(table, len(data_list), start_row, template_row_idx)
+        self._ensure_rows(table, len(data_list), start_row, template_row_idx, exclude_rows)
 
         # 填充数据
         for row_idx, data in enumerate(data_list):
@@ -130,12 +132,26 @@ class RowExpander:
                 table.add_row()
 
     def _clear_template_row(self, row) -> None:
-        """清空模板行的内容（保留格式）"""
+        """清空模板行的内容（保留格式），但保留话术行"""
         for cell in row.cells:
             for para in cell.paragraphs:
-                # 清空所有 run 的文本
-                for run in para.runs:
-                    run.text = ""
+                text = para.text
+                # 如果这一行包含话术占位符，不清空，只替换占位符
+                if "{{#话术}}" in text or "{{话术}}" in text or "{{/话术}}" in text:
+                    # 替换话术占位符
+                    from src.fillers.constants import DEFAULT_SPEECH_VARIABLES
+                    text = text.replace("{{#话术}}", "").replace("{{/话术}}", "")
+                    for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
+                        text = text.replace(f"{{{{{var_name}}}}}", default_value)
+                    # 更新段落文本
+                    if para.runs:
+                        for run in para.runs:
+                            run.text = ""
+                        para.runs[0].text = text
+                else:
+                    # 清空其他行的内容
+                    for run in para.runs:
+                        run.text = ""
 
     def _fill_row(
         self,
