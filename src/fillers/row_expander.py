@@ -66,25 +66,43 @@ class RowExpander:
 
             for _ in range(rows_to_add):
                 new_row = table.add_row()
-                # 复制格式
-                for src_cell, dst_cell in zip(template_row.cells, new_row.cells):
-                    # 复制每个段落
-                    for src_para in src_cell.paragraphs:
-                        dst_para = dst_cell.paragraphs[len(src_cell.paragraphs) - 1] if dst_cell.paragraphs else dst_cell.add_paragraph()
+                # 复制格式 - 使用索引遍历
+                for cell_idx in range(len(template_row.cells)):
+                    src_cell = template_row.cells[cell_idx]
+                    dst_cell = new_row.cells[cell_idx]
 
-                        # 复制文本内容（清空）
-                        for dst_run in dst_para.runs:
-                            dst_run.text = ""
+                    # 复制每个段落（按索引）
+                    src_paras = src_cell.paragraphs
+                    dst_paras = dst_cell.paragraphs
 
-                        # 如果没有 Run，添加一个空的
-                        if not dst_para.runs:
-                            dst_para.add_run("")
+                    if src_paras:
+                        # 源单元格有段落
+                        for para_idx in range(len(src_paras)):
+                            src_para = src_paras[para_idx]
 
-                        # 复制格式到第一个 Run
-                        if src_para.runs and dst_para.runs:
-                            src_run = src_para.runs[0]
-                            dst_run = dst_para.runs[0]
-                            self._copy_run_format(src_run, dst_run)
+                            # 确保目标单元格有足够的段落
+                            while len(dst_paras) <= para_idx:
+                                dst_cell.add_paragraph()
+                                dst_paras = dst_cell.paragraphs  # 刷新引用
+
+                            dst_para = dst_paras[para_idx]
+
+                            # 复制文本内容（清空）
+                            for dst_run in dst_para.runs:
+                                dst_run.text = ""
+
+                            # 如果没有 Run，添加一个空的
+                            if not dst_para.runs:
+                                dst_para.add_run("")
+
+                            # 复制格式到第一个 Run
+                            if src_para.runs and dst_para.runs:
+                                src_run = src_para.runs[0]
+                                dst_run = dst_para.runs[0]
+                                self._copy_run_format(src_run, dst_run)
+                    else:
+                        # 源单元格没有段落，添加一个空段落
+                        dst_cell.add_paragraph()
 
             logger.debug(f"Added {rows_to_add} rows to table")
         else:

@@ -107,6 +107,8 @@ class DocumentGenerator:
 
         except Exception as e:
             logger.error(f"Failed to generate document: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return GenerationResult(
                 success=False,
                 template_id=template.id,
