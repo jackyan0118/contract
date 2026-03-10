@@ -110,32 +110,15 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test") -> 
 
         # 2. 查询明细数据
         print("\n2. 查询明细数据...")
+        details = get_quotation_details(wybs)
+        print(f"   查询到 {len(details)} 条明细数据")
 
-        # 使用模拟数据测试（因为实际数据字段与模板不匹配会导致过滤失败）
-        # 模拟通用生化试剂的明细数据
-        details = [
-            {
-                "LYXH": 2,
-                "WLDM": "31000000838",
-                "WLMS": "测试物料1",
-                "GG": "规格1",
-                "DW": "盒",
-                "LSJ": 100.00,
-                "GHJY": 80.00,
-                "CPXF": "139",
-            },
-            {
-                "LYXH": 2,
-                "WLDM": "31000000852",
-                "WLMS": "测试物料2",
-                "GG": "规格2",
-                "DW": "盒",
-                "LSJ": 200.00,
-                "GHJY": 150.00,
-                "CPXF": "139",
-            },
-        ]
-        print(f"   使用模拟明细数据: {len(details)} 条")
+        # 显示关键字段用于调试
+        if details:
+            lyxh_values = set([d.get('LYXH') for d in details])
+            cpxf_values = set([d.get('CPXF') for d in details])
+            print(f"   LYXH值: {lyxh_values}")
+            print(f"   CPXF值: {cpxf_values}")
 
         if not details:
             print(f"❌ 报价单明细为空: {wybs}")
