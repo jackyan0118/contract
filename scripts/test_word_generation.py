@@ -15,6 +15,7 @@ Word 模板生成测试脚本
 import argparse
 import asyncio
 import sys
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -22,6 +23,15 @@ from typing import Optional
 # 添加项目根目录到 path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+# 初始化 Thick Mode (需要 Oracle Instant Client)
+ORACLE_INSTANT_CLIENT_PATH = os.environ.get("ORACLE_INSTANT_CLIENT", "/opt/oracle/instantclient")
+try:
+    import oracledb
+    oracledb.init_oracle_client(lib_dir=ORACLE_INSTANT_CLIENT_PATH)
+    print(f"[INFO] Thick Mode 初始化成功: {ORACLE_INSTANT_CLIENT_PATH}")
+except Exception as e:
+    print(f"[WARN] Thick Mode 初始化失败: {e}")
 
 from src.config.settings import get_settings
 from src.database.connection import get_connection_pool
@@ -191,33 +201,42 @@ async def list_available_wybs(limit: int = 10) -> list:
     print(f"查询最近 {limit} 个报价单...")
 
     try:
-        pool = get_connection_pool()
-        with pool.connection() as conn:
-            with conn.cursor() as cursor:
-                # 查询最近创建的报价单
-                sql = """
-                    SELECT wybs, btitle, customerid, createdate
-                    FROM uf_htjgk
-                    WHERE btitle IS NOT NULL
-                    ORDER BY createdate DESC
-                    FETCH FIRST :1 ROWS ONLY
-                """
-                await cursor.execute(sql, [limit])
-                rows = await cursor.fetchall()
+        import oracledb
+        # 初始化 Thick 模式
+        ORACLE_INSTANT_CLIENT_PATH = os.environ.get("ORACLE_INSTANT_CLIENT", "/opt/oracle/instantclient")
+        try:
+            oracledb.init_oracle_client(lib_dir=ORACLE_INSTANT_CLIENT_PATH)
+        except Exception:
+            pass
 
-                wybs_list = []
-                for row in rows:
-                    wybs_list.append({
-                        "wybs": row[0],
-                        "title": row[1],
-                        "customerid": row[2],
-                        "createdate": row[3]
-                    })
+        # 直接连接（不使用连接池，因为需要 Thick 模式）
+        settings = get_settings()
+        dsn = settings.database.dsn.get_secret_value()
+        # 解析 DSN
+        dsn_str = dsn.replace("oracle://", "")
 
-                return wybs_list
+        conn = oracledb.connect(user='read_db', password='Skhb1189!', dsn='172.16.15.6:1521/oadata')
+        cursor = conn.cursor()
+
+        # 查询报价单 - 使用正确的表名和字段
+        sql = f"SELECT WYBS, HTBH FROM ecology.UF_HTJGKST WHERE WYBS IS NOT NULL AND ROWNUM <= {limit} ORDER BY MODEDATACREATEDATE DESC"
+        cursor.execute(sql)
+        rows = cursor.fetchall()
+
+        wybs_list = []
+        for row in rows:
+            wybs_list.append({
+                "wybs": row[0],
+                "title": row[1] or "N/A"
+            })
+
+        conn.close()
+        return wybs_list
 
     except Exception as e:
         print(f"❌ 查询失败: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -284,7 +303,7 @@ def main():
 
         print_header(f"可用报价单 (共 {len(wybs_list)} 个)")
         for i, item in enumerate(wybs_list, 1):
-            print(f"{i}. {item['wybs']} - {item['title']} ({item['createdate']})")
+            print(f"{i}. {item['wybs']} - {item['title']}")
 
     elif args.wybs:
         # 单个生成
