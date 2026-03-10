@@ -80,7 +80,7 @@ def get_quotation_by_wybs(wybs: str) -> Optional[dict]:
         )
 
     wybs = wybs.strip()
-    logger.info("查询报价单主表", context={"wybs": wybs})
+    logger.info("查询报价单主表", extra={"wybs": wybs})
 
     # 获取带 schema 的表名
     table_name = _get_table_name("quotation")
@@ -95,14 +95,14 @@ def get_quotation_by_wybs(wybs: str) -> Optional[dict]:
                 row = cursor.fetchone()
 
                 if row is None:
-                    logger.warning("报价单不存在", context={"wybs": wybs})
+                    logger.warning("报价单不存在", extra={"wybs": wybs})
                     return None
 
                 # 将 Oracle 列名转换为字典
                 result = dict(zip(columns, row, strict=False))
                 logger.info(
                     "查询报价单成功",
-                    context={"wybs": wybs, "has_data": True},
+                    extra={"wybs": wybs, "has_data": True},
                 )
                 return result
 
@@ -110,7 +110,7 @@ def get_quotation_by_wybs(wybs: str) -> Optional[dict]:
         # 重新抛出 QueryException
         raise
     except Exception as e:
-        logger.error("查询报价单失败", context={"wybs": wybs})
+        logger.error("查询报价单失败", extra={"wybs": wybs})
         raise QueryException(
             query=sql,
             reason="查询报价单失败",
@@ -147,7 +147,7 @@ def list_quotations(limit: int = 100, offset: int = 0) -> list[dict]:
             reason="offset 不能为负数",
         )
 
-    logger.info("查询报价单列表", context={"limit": limit, "offset": offset})
+    logger.info("查询报价单列表", extra={"limit": limit, "offset": offset})
 
     # 获取带 schema 的表名
     table_name = _get_table_name("quotation")
@@ -165,7 +165,7 @@ def list_quotations(limit: int = 100, offset: int = 0) -> list[dict]:
                 results = [dict(zip(columns, row, strict=False)) for row in cursor.fetchall()]
                 logger.info(
                     "查询报价单列表成功",
-                    context={"count": len(results)},
+                    extra={"count": len(results)},
                 )
                 return results
     except QueryException:

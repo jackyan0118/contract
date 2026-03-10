@@ -12,8 +12,9 @@ import oracledb
 
 # 启用 Thick 模式以支持旧版 Oracle 数据库
 # 注意: 需要安装 oracle-instantclient-basic
+ORACLE_INSTANT_CLIENT_PATH = os.environ.get("ORACLE_INSTANT_CLIENT", "/opt/oracle/instantclient")
 try:
-    oracledb.init_oracle_client()
+    oracledb.init_oracle_client(lib_dir=ORACLE_INSTANT_CLIENT_PATH)
 except Exception:
     # 如果没有安装 Instant Client，Thin 模式仍然可用
     pass
