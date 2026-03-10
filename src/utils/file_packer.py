@@ -95,3 +95,29 @@ class FilePacker:
                     logger.debug(f"Deleted: {file_path}")
                 except Exception as e:
                     logger.warning(f"Failed to delete {file_path}: {e}")
+
+
+def pack_files_to_base64_zip(file_paths: List[str]) -> str:
+    """将文件打包为 Base64 编码的 ZIP
+
+    Args:
+        file_paths: 文件路径列表
+
+    Returns:
+        Base64 编码的 ZIP 内容
+    """
+    import base64
+    from io import BytesIO
+
+    if not file_paths:
+        return ""
+
+    buffer = BytesIO()
+    with zipfile.ZipFile(buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in file_paths:
+            path = Path(file_path)
+            if path.exists():
+                zipf.write(path, path.name)
+
+    buffer.seek(0)
+    return base64.b64encode(buffer.read()).decode('utf-8')

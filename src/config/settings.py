@@ -127,6 +127,34 @@ class TemplateSettings(BaseSettings):
     max_file_size: int = Field(default=10485760, description="最大文件大小 (10MB)")
 
 
+class SecuritySettings(BaseSettings):
+    """安全配置."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="SECURITY_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    api_keys: list[dict] = Field(default_factory=list, description="API Key 列表")
+
+
+class RateLimitSettings(BaseSettings):
+    """限流配置."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="RATE_LIMIT_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    default: str = Field(default="100/minute", description="默认限流")
+    generate: str = Field(default="20/minute", description="生成接口限流")
+    batch: str = Field(default="5/minute", description="批量接口限流")
+    by_ip: bool = Field(default=True, description="是否按IP限流")
+    whitelist: list[str] = Field(default_factory=list, description="IP白名单")
+
+
 class Settings(BaseSettings):
     """聚合配置."""
 
@@ -139,6 +167,8 @@ class Settings(BaseSettings):
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     template: TemplateSettings = Field(default_factory=TemplateSettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
+    rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
 
     @classmethod
     def load_from_yaml(cls, yaml_path: str) -> "Settings":
@@ -151,6 +181,8 @@ class Settings(BaseSettings):
             database=DatabaseSettings(**data.get("database", {})),
             logging=LoggingSettings(**data.get("logging", {})),
             template=TemplateSettings(**data.get("template", {})),
+            security=SecuritySettings(**data.get("security", {})),
+            rate_limit=RateLimitSettings(**data.get("rate_limit", {})),
         )
 
 

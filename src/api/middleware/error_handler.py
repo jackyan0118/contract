@@ -2,12 +2,19 @@
 
 from typing import Callable
 
-from fastapi import Request, Response, status
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from src.exceptions.base import AppException, ErrorCode
 from src.utils.logger import get_logger
 
 logger = get_logger("api.error")
+
+
+def setup_error_handler(app: FastAPI) -> None:
+    """配置错误处理中间件"""
+    app.add_middleware(ErrorHandlerMiddleware)
 
 
 async def error_handler_middleware(
@@ -56,3 +63,37 @@ def _get_status_code(error_code: ErrorCode) -> int:
         ErrorCode.SERVICE_ERROR: status.HTTP_500_INTERNAL_SERVER_ERROR,
     }
     return status_map.get(error_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ErrorHandlerMiddleware(BaseHTTPMiddleware):
+    """错误处理中间件"""
+
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        try:
+            return await call_next(request)
+        except AppException as e:
+            logger.error(f"业务异常：{e.message}", exc_info=False)
+            return JSONResponse(
+                status_code=_get_status_code(e.error_code),
+                content={
+                    "success": False,
+                    "error": {
+                        "code": e.error_code.value,
+                        "message": e.message,
+                        "details": e.detail,
+                    },
+                },
+            )
+        except Exception as e:
+            logger.error(f"未预期的异常：{str(e)}", exc_info=True)
+            return JSONResponse(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content={
+                    "success": False,
+                    "error": {
+                        "code": "INTERNAL_ERROR",
+                        "message": "服务器内部错误",
+                        "details": None,
+                    },
+                },
+            )
