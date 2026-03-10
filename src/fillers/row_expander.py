@@ -22,7 +22,8 @@ class RowExpander:
         table: Table,
         data_list: List[Dict[str, Any]],
         columns: List[Dict[str, str]],
-        start_row: int = 1
+        start_row: int = 1,
+        template_row_idx: int = -1
     ) -> None:
         """扩展表格行
 
@@ -30,14 +31,15 @@ class RowExpander:
             table: 表格对象
             data_list: 数据列表
             columns: 列配置列表
-            start_row: 起始行索引
+            start_row: 起始行索引（从该行开始插入数据）
+            template_row_idx: 模板行索引（作为数据行的格式模板）
         """
         if not data_list:
             logger.warning("No data to expand")
             return
 
         # 确保有足够的行
-        self._ensure_rows(table, len(data_list), start_row)
+        self._ensure_rows(table, len(data_list), start_row, template_row_idx)
 
         # 填充数据
         for row_idx, data in enumerate(data_list):
@@ -51,18 +53,35 @@ class RowExpander:
 
         logger.info(f"Expanded table with {len(data_list)} rows")
 
-    def _ensure_rows(self, table: Table, required_rows: int, start_row: int) -> None:
-        """确保表格有足够的行"""
+    def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1) -> None:
+        """确保表格有足够的行
+
+        Args:
+            table: 表格对象
+            required_rows: 需要的数据行数
+            start_row: 起始行索引
+            template_row_idx: 模板行索引（用于复制格式）
+        """
         # 计算需要的行数
         current_data_rows = len(table.rows) - start_row
         rows_to_add = required_rows - current_data_rows
 
         if rows_to_add <= 0:
+            # 如果不需要添加新行，清空模板行的内容
+            if template_row_idx >= 0 and template_row_idx < len(table.rows):
+                self._clear_template_row(table.rows[template_row_idx])
             return
 
+        # 确定模板行
+        if template_row_idx < 0:
+            template_row_idx = start_row
+
         # 复制模板行
-        if start_row < len(table.rows):
-            template_row = table.rows[start_row]
+        if template_row_idx < len(table.rows):
+            template_row = table.rows[template_row_idx]
+
+            # 首先清空模板行的内容
+            self._clear_template_row(template_row)
 
             for _ in range(rows_to_add):
                 new_row = table.add_row()
@@ -109,6 +128,14 @@ class RowExpander:
             # 没有模板行，直接添加
             for _ in range(rows_to_add):
                 table.add_row()
+
+    def _clear_template_row(self, row) -> None:
+        """清空模板行的内容（保留格式）"""
+        for cell in row.cells:
+            for para in cell.paragraphs:
+                # 清空所有 run 的文本
+                for run in para.runs:
+                    run.text = ""
 
     def _fill_row(
         self,

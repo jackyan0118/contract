@@ -193,22 +193,23 @@ class DocumentGenerator:
         for table in doc.tables:
             # 查找明细表
             is_detail_table = False
-            start_row = 0
+            template_row_idx = -1
 
+            # 第一遍：清除所有占位符并找到模板行
             for row_idx, row in enumerate(table.rows):
                 for cell in row.cells:
                     for para in cell.paragraphs:
-                        if "{{#明细表}}" in para.text:
+                        text = para.text
+                        if "{{#明细表}}" in text or "{{/明细表}}" in text:
                             is_detail_table = True
-                            start_row = row_idx + 1
+                            template_row_idx = row_idx
                             # 清除标记文本
-                            para.text = para.text.replace("{{#明细表}}", "").replace("{{/明细表}}", "")
-                            break
-                if is_detail_table:
-                    break
+                            para.text = text.replace("{{#明细表}}", "").replace("{{/明细表}}", "")
 
             if not is_detail_table:
                 continue
+
+            start_row = template_row_idx + 1  # 从模板行之后开始插入
 
             # 应用 detail_filter 过滤数据
             filtered_data = self._apply_detail_filter(template_config, data_list)
@@ -220,7 +221,10 @@ class DocumentGenerator:
                 columns = self._parse_table_columns(table)
 
             # 填充数据
-            self.row_expander.expand(table, filtered_data, columns, start_row)
+            self.row_expander.expand(table, filtered_data, columns, start_row, template_row_idx)
+
+            # 处理话术占位符（表格单元格中）
+            self._process_table_speeches(table)
 
     def _apply_detail_filter(self,
                             template_config: Optional[TemplateMetadataModel],
@@ -399,6 +403,28 @@ class DocumentGenerator:
                     run.text = ""
                 if para.runs:
                     para.runs[0].text = text
+
+    def _process_table_speeches(self, table) -> None:
+        """处理表格中的话术占位符"""
+        for row in table.rows:
+            for cell in row.cells:
+                for para in cell.paragraphs:
+                    text = para.text
+                    if "{{#话术}}" in text or "{{话术}}" in text or "{{/话术}}" in text:
+                        # 清除话术标记
+                        text = text.replace("{{#话术}}", "")
+                        text = text.replace("{{/话术}}", "")
+                        # 替换话术变量
+                        for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
+                            placeholder = f"{{{{{var_name}}}}}"
+                            text = text.replace(placeholder, default_value)
+
+                        # 更新段落文本
+                        if text != para.text:
+                            for run in para.runs:
+                                run.text = ""
+                            if para.runs:
+                                para.runs[0].text = text
 
 
 class MultiDocumentGenerator:
