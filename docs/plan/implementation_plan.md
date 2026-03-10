@@ -344,24 +344,28 @@ speeches:
 
 #### 任务列表
 
-| 序号 | 任务 | 文件路径 | 产出物 | 依赖 |
-|------|------|----------|--------|------|
-| 7.1 | 结构化日志配置 | `src/utils/structured_logger.py` | 结构化日志 | Phase 6 |
-| 7.2 | 日志轮转配置 | `src/utils/log_rotation.py` | 日志轮转工具 | 7.1 |
-| 7.3 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 |
-| 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理 | 7.1 |
-| 7.5 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 |
-| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 |
-| 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 |
+| 序号 | 任务 | 文件路径 | 产出物 | 依赖 | 状态 |
+|------|------|----------|--------|------|------|
+| 7.1 | 结构化日志配置 | `src/utils/structured_logger.py` | 日志配置模块 | Phase 6 | ✅ 已实现 |
+| 7.2 | 日志轮转配置 | `src/utils/logger.py` | 日志轮转工具 | 7.1 | ✅ 已实现 |
+| 7.3 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 | ✅ 已实现 |
+| 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理 | 7.3 | ✅ 已实现 |
+| 7.5 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 | 待实现 |
+| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 | 待实现 |
+| 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 | 待实现 |
+| 7.8 | 新增认证异常 | `src/exceptions/api.py` | AuthenticationError | 7.3 | 待实现 |
+| 7.9 | 新增限流异常 | `src/exceptions/api.py` | RateLimitError | 7.3 | 待实现 |
 
 #### 产出物清单
-- [ ] 结构化日志模块 (`src/utils/structured_logger.py`)
-- [ ] 日志轮转工具 (`src/utils/log_rotation.py`)
+- [x] 结构化日志模块 (`src/utils/structured_logger.py`)
+- [x] 日志轮转工具 (`src/utils/logger.py`)
+- [x] 错误处理中间件 (`src/api/middleware/error_handler.py`)
+- [x] 异常类层次 (`src/exceptions/*.py`)
 - [ ] 请求日志中间件 (`src/api/middleware/logging.py`)
-- [ ] 错误处理中间件 (`src/api/middleware/error_handler.py`)
-- [ ] 异常类层次 (`src/exceptions/*.py`)
 - [ ] 审计日志服务 (`src/services/audit_logger.py`)
 - [ ] 日志清理任务 (`src/tasks/log_cleanup.py`)
+- [ ] AuthenticationError (`src/exceptions/api.py`)
+- [ ] RateLimitError (`src/exceptions/api.py`)
 
 #### 风险点
 - **风险**: 日志文件过大
@@ -764,20 +768,22 @@ mypy>=1.4.0
 - **存储位置**: 本地文件 `logs/audit.log`
 - **格式**: JSON Lines
 - **保留周期**: 7 天
+- **字段增强**: 补充 user_agent、error_message、request_id
 
 ### 11.3 错误处理
 
-- 统一异常类层次结构
-- 错误码与 HTTP 状态码映射
-- 错误处理中间件
+- 统一使用 Phase 6 现有数值型错误码
+- 复用现有 AppException 类结构
+- 新增 AuthenticationError、RateLimitError
 
-### 11.4 任务调整
+### 11.4 任务状态
 
-- 新增：日志轮转工具、异常类定义、日志清理任务
-- 移除：日志查询接口（用户不需要）
+- ✅ 已实现（4项）: 结构化日志、日志轮转、异常类、错误处理中间件
+- 待实现（5项）: 请求日志中间件、审计日志服务、日志清理、认证异常、限流异常
+- 移除: 日志查询接口
 
 ---
 
-*文档版本：1.2*
+*文档版本：1.3*
 *创建日期：2026-03-06*
 *最后更新：2026-03-10*

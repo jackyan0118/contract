@@ -118,18 +118,35 @@ logging:
 {
   "timestamp": "2026-03-10T12:00:00.123Z",
   "event": "generate",
-  "user": "dev_key_001",
+  "user": "sk_dev_***xxxx",  // API Key 脱敏
+  "user_agent": "Mozilla/5.0...",
   "resource": "20240301001",
   "action": "document_generation",
   "result": "success",
+  "error_message": null,
+  "request_id": "req_abc123",
   "details": {
     "templates_used": ["模板1", "模板2"],
     "file_count": 2,
     "duration_ms": 1500
-  },
-  "request_id": "req_abc123"
+  }
 }
 ```
+
+**字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| timestamp | string | ISO 8601 时间戳 |
+| event | string | 事件类型 |
+| user | string | 用户标识（脱敏后的 API Key） |
+| user_agent | string | 客户端标识 |
+| resource | string | 关联资源（wybs/报价单号） |
+| action | string | 操作类型 |
+| result | string | 结果（success/failed） |
+| error_message | string | 失败原因 |
+| request_id | string | 请求追踪ID |
+| details | object | 额外信息 |
 
 ### 2.3 审计日志存储
 
@@ -153,75 +170,73 @@ logging:
 
 ### 3.2 统一错误响应
 
-Phase 6 已定义统一响应格式：
+复用 Phase 6 现有的异常类体系：
 
 ```python
-# src/exceptions/base.py
+# src/exceptions/base.py (已存在，复用)
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Optional
+
+class ErrorCode(str, Enum):
+    """错误代码枚举 - 使用数值型错误码"""
+    SUCCESS = "0"
+    UNKNOWN_ERROR = "1000"
+    VALIDATION_ERROR = "1001"
+    NOT_FOUND = "1002"
+    PERMISSION_DENIED = "1003"
+    # ... 其他错误码
+
 class AppException(Exception):
-    """应用基础异常类"""
+    """应用基础异常类 - 复用现有实现"""
     def __init__(
         self,
-        code: ErrorCode,
         message: str,
-        details: dict = None,
-        status_code: int = 500
+        error_code: ErrorCode = ErrorCode.UNKNOWN_ERROR,
+        detail: Optional[Dict[str, Any]] = None,
+        cause: Optional[Exception] = None,
     ):
-        self.code = code
         self.message = message
-        self.details = details or {}
-        self.status_code = status_code
+        self.error_code = error_code
+        self.detail = detail or {}
+        self.cause = cause
+```
 
-class ValidationError(AppException):
-    """验证错误"""
-    def __init__(self, message: str, details: dict = None):
-        super().__init__(
-            code=ErrorCode.VALIDATION_ERROR,
-            message=message,
-            details=details,
-            status_code=400
-        )
+**Phase 7 需要新增的异常类**：
 
-class NotFoundError(AppException):
-    """资源不存在错误"""
-    def __init__(self, resource: str, identifier: str):
-        super().__init__(
-            code=ErrorCode.QUOTE_NOT_FOUND,
-            message=f"{resource}不存在",
-            details={"resource": resource, "identifier": identifier},
-            status_code=404
-        )
+```python
+# src/exceptions/api.py - 补充缺失的异常类
 
-class AuthenticationError(AppException):
-    """认证错误"""
+class AuthenticationError(APIException):
+    """认证错误 - 新增"""
     def __init__(self, message: str = "认证失败"):
         super().__init__(
-            code=ErrorCode.UNAUTHORIZED,
             message=message,
-            status_code=401
+            error_code=ErrorCode.PERMISSION_DENIED,
+            detail={"type": "authentication"}
         )
 
-class RateLimitError(AppException):
-    """限流错误"""
+class RateLimitError(APIException):
+    """限流错误 - 新增"""
     def __init__(self, retry_after: int = 60):
         super().__init__(
-            code=ErrorCode.RATE_LIMIT_EXCEEDED,
             message="请求过于频繁，请稍后重试",
-            details={"retry_after": retry_after},
-            status_code=429
+            error_code=ErrorCode.SERVICE_ERROR,
+            detail={"retry_after": retry_after, "type": "rate_limit"}
         )
 ```
 
-### 3.3 异常映射
+### 3.3 异常映射 (复用现有)
 
 | 异常类 | 错误码 | 状态码 |
 |--------|--------|--------|
-| ValidationError | VALIDATION_ERROR | 400 |
-| NotFoundError | QUOTE_NOT_FOUND | 404 |
-| AuthenticationError | UNAUTHORIZED | 401 |
-| RateLimitError | RATE_LIMIT_EXCEEDED | 429 |
-| TemplateMatchError | TEMPLATE_NOT_MATCHED | 400 |
-| GenerationError | GENERATION_FAILED | 500 |
-| DatabaseException | INTERNAL_ERROR | 500 |
+| ValidationError | 1001 | 400 |
+| NotFoundError | 1002 | 404 |
+| AuthenticationError (新增) | 1003 | 401 |
+| RateLimitError (新增) | 6000 | 429 |
+| MatchException | 4002 | 400 |
+| DocumentGenerateException | 5001 | 500 |
+| DatabaseException | 3000 | 500 |
 
 ---
 
@@ -238,7 +253,8 @@ import uuid
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        request_id = str(uuid.uuid4())[:8]
+        # 优先使用客户端传入的 request_id，否则生成新的
+        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
         request.state.request_id = request_id
         start_time = time.time()
 
@@ -249,11 +265,28 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
-                "client_ip": request.client.host if request.client else None
+                "client_ip": request.client.host if request.client else None,
+                "user_agent": request.headers.get("User-Agent", "unknown")
             }
         )
 
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # 记录异常情况
+            duration_ms = int((time.time() - start_time) * 1000)
+            logger.error(
+                "API request failed",
+                extra={
+                    "request_id": request_id,
+                    "method": request.method,
+                    "path": request.url.path,
+                    "duration_ms": duration_ms,
+                    "error": str(e)
+                }
+            )
+            raise
+
         duration_ms = int((time.time() - start_time) * 1000)
 
         # 记录请求完成
@@ -275,22 +308,51 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 ### 4.2 错误处理中间件
 
+复用 Phase 6 现有实现，使用 `app.add_exception_handler()` 注册：
+
 ```python
-# src/api/middleware/error_handler.py
-from fastapi import Request
+# src/api/middleware/error_handler.py (复用现有实现)
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from src.exceptions import AppException
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from src.exceptions import AppException, ErrorCode
 
 async def app_exception_handler(request: Request, exc: AppException):
     """应用异常处理"""
+    return JSONResponse(
+        status_code=400,  # 根据具体异常类型确定
+        content={
+            "success": False,
+            "error": exc.to_dict(),
+            "request_id": getattr(request.state, "request_id", None)
+        }
+    )
+
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """HTTP 异常处理"""
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
             "error": {
-                "code": exc.code.value,
-                "message": exc.message,
-                "details": exc.details
+                "error_code": str(exc.status_code),
+                "message": exc.detail,
+            },
+            "request_id": getattr(request.state, "request_id", None)
+        }
+    )
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Pydantic 验证异常处理"""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "error": {
+                "error_code": ErrorCode.VALIDATION_ERROR.value,
+                "message": "参数验证失败",
+                "detail": exc.errors()
             },
             "request_id": getattr(request.state, "request_id", None)
         }
@@ -299,16 +361,19 @@ async def app_exception_handler(request: Request, exc: AppException):
 async def generic_exception_handler(request: Request, exc: Exception):
     """通用异常处理"""
     logger.error(
-        f"Unhandled exception: {str(exc)}",
+        "Unhandled exception occurred",
         exc_info=True,
-        extra={"request_id": getattr(request.state, "request_id", None)}
+        extra={
+            "request_id": getattr(request.state, "request_id", None),
+            "exception_type": type(exc).__name__
+        }
     )
     return JSONResponse(
         status_code=500,
         content={
             "success": False,
             "error": {
-                "code": ErrorCode.INTERNAL_ERROR.value,
+                "error_code": ErrorCode.UNKNOWN_ERROR.value,
                 "message": "内部错误，请稍后重试"
             },
             "request_id": getattr(request.state, "request_id", None)
@@ -320,15 +385,19 @@ async def generic_exception_handler(request: Request, exc: Exception):
 
 ## 五、任务列表
 
-| 序号 | 任务 | 文件路径 | 产出物 | 依赖 |
-|------|------|----------|--------|------|
-| 7.1 | 结构化日志配置 | `src/utils/structured_logger.py` | 日志配置模块 | Phase 6 |
-| 7.2 | 日志轮转配置 | `src/utils/log_rotation.py` | 日志轮转工具 | 7.1 |
-| 7.3 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 |
-| 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理中间件 | 7.1 |
-| 7.5 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 |
-| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 |
-| 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 |
+> **注意**: 部分功能已在 Phase 6 实现，复用现有代码
+
+| 序号 | 任务 | 文件路径 | 产出物 | 依赖 | 状态 |
+|------|------|----------|--------|------|------|
+| 7.1 | 结构化日志配置 | `src/utils/structured_logger.py` | 日志配置模块 | Phase 6 | ✅ 已实现 |
+| 7.2 | 日志轮转配置 | `src/utils/logger.py` | 日志轮转工具 | 7.1 | ✅ 已实现 |
+| 7.3 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 | ✅ 已实现 |
+| 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理中间件 | 7.3 | ✅ 已实现 |
+| 7.5 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 | 待实现 |
+| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 | 待实现 |
+| 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 | 待实现 |
+| 7.8 | 新增认证异常 | `src/exceptions/api.py` | AuthenticationError | 7.3 | 待实现 |
+| 7.9 | 新增限流异常 | `src/exceptions/api.py` | RateLimitError | 7.3 | 待实现 |
 
 ---
 
@@ -395,4 +464,33 @@ logging:
 
 ---
 
+## 八、专家评审反馈（已采纳）
+
+根据专家评审意见，已更新以下内容：
+
+### 8.1 统一错误码体系
+
+- 复用 Phase 6 现有的数值型错误码
+- 使用现有的 `AppException` 类结构
+
+### 8.2 完善异常类
+
+- 补充 `AuthenticationError` 和 `RateLimitError`
+- 统一使用 `error_code` 和 `detail` 参数
+
+### 8.3 中间件优化
+
+- 优化 request_id 生成逻辑（支持请求头继承）
+- 添加异常处理的 try-except
+- 增加 user_agent 字段记录
+
+### 8.4 审计日志增强
+
+- 补充 user_agent、error_message、request_id 字段
+- 添加 API Key 脱敏说明
+
+---
+
+*文档版本：1.1*
 *讨论完成时间：2026-03-10*
+*评审完成时间：2026-03-10*
