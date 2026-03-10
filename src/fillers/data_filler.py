@@ -60,12 +60,6 @@ class ColumnConfig:
     type: str = "text"  # text, auto_number
     transform: Optional[str] = None
     params: Dict[str, Any] = field(default_factory=dict)
-    """列配置"""
-    name: str
-    source_field: str
-    source_table: str = "UF_HTJGKST_DT1"
-    transform: Optional[str] = None
-    params: Dict[str, Any] = field(default_factory=dict)
 
 
 class DataFiller:
