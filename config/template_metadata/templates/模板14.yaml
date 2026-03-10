@@ -1,0 +1,56 @@
+# KHB Polaris品牌北极星发光产品供货价
+# 模板ID: 模板14
+# 更新日期: 2026-03-10
+
+id: "模板14"
+name: "KHB Polaris品牌北极星发光产品供货价"
+file: "templates/模板14：KHB Polaris品牌北极星发光产品供货价.docx"
+category: "北极星发光"
+
+# ============================================================
+# Phase 5: 明细表数据筛选规则
+# 从报价单明细中筛选符合条件的数据填充到模板
+# ============================================================
+detail_filter:
+  conditions:
+    - field: "CPXF"
+      operator: "="
+      value: "北极星发光试剂"
+
+# 表格配置
+table:
+  placeholders:
+    start: "{{#明细表}}"
+    end: "{{/明细表}}"
+  columns:
+    - name: "序号"
+      type: "auto_number"
+    - name: "物料编码"
+      source_field: "WLDM"
+      source_table: "UF_HTJGKST_DT1"
+    - name: "分类"
+      source_field: "CPXF"
+      source_table: "UF_HTJGKST_DT1"
+    - name: "品名"
+      source_field: "WLMS"
+      source_table: "UF_HTJGKST_DT1"
+    - name: "规格"
+      source_field: "GG"
+      source_table: "UF_HTJGKST_DT1"
+    - name: "零售价"
+      source_field: "LSJ"
+      source_table: "UF_HTJGKST_DT1"
+      format:
+        type: "currency"
+        decimal_places: 2
+    - name: "供货价"
+      source_field: "GHJY"
+      source_table: "UF_HTJGKST_DT1"
+      format:
+        type: "currency"
+        decimal_places: 2
+
+# 段落占位符
+paragraph_placeholders:
+  金额单位:
+    value: "元"

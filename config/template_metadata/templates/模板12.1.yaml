@@ -1,0 +1,60 @@
+# 北极星生化试剂（肾功和心肌酶）产品价格-集采中标价
+# 模板ID: 模板12.1
+# 更新日期: 2026-03-10
+
+id: "模板12.1"
+name: "北极星生化试剂（肾功和心肌酶）产品价格-集采中标价"
+file: "templates/模板12.1：北极星生化试剂（肾功和心肌酶）产品价格-集采中标价.docx"
+category: "集采产品"
+
+# ============================================================
+# Phase 5: 明细表数据筛选规则
+# 从报价单明细中筛选符合条件的数据填充到模板
+# ============================================================
+detail_filter:
+  conditions:
+    - field: "CPXF"
+      operator: "="
+      value: "北极星生化试剂"
+    - field: "DJZMC"
+      operator: "in"
+      value: ['北极星生化-肾功和心肌酶-含校准质控', 'Polaris生化-肾功和心肌酶']
+    - field: "SFJC"
+      operator: "="
+      value: 1
+    - field: "BNGHJLX"
+      operator: "="
+      value: "集采中标价"
+
+# 表格配置
+table:
+  placeholders:
+    start: "{{#明细表}}"
+    end: "{{/明细表}}"
+
+  columns:
+    - name: "序号"
+      type: "auto_number"
+
+    - name: "产品名称"
+      source_field: "WLMS"
+      source_table: "UF_HTJGKST_DT1"
+
+    - name: "供货价"
+      source_field: "GHJY"
+      source_table: "UF_HTJGKST_DT1"
+      format:
+        type: "currency"
+        decimal_places: 2
+
+# 段落占位符
+paragraph_placeholders:
+  金额单位:
+    value: "元"
+
+# 话术配置 (待完善具体话术内容)
+speeches:
+  - id: "话术1"
+    type: "fixed"
+    position: "after_table"
+    content: "（待完善）"

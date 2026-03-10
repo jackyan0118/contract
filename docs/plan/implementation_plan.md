@@ -181,28 +181,104 @@
 
 **复杂度**: 高
 
+#### 设计说明
+
+**模板元数据配置**: 每个模板独立一个 YAML 文件在 `config/template_metadata/templates/`
+
+```yaml
+# config/template_metadata/templates/模板2.yaml 示例
+id: "模板2"
+name: "通用生化产品价格模版"
+file: "templates/模板2.docx"
+
+# Phase 4: 模板匹配条件
+match_conditions:
+  产品细分: "通用生化试剂"
+
+# Phase 5: 明细表数据筛选规则（多组条件为 OR 关系）
+detail_filter:
+  condition_groups:
+    - name: "规则1"
+      conditions:
+        - field: "CPXF"
+          operator: "="
+          value: "通用生化试剂"
+        - field: "LYXH"
+          operator: "="
+          value: 2
+
+# 表格列配置
+table:
+  placeholders:
+    start: "{{#明细表}}"
+    end: "{{/明细表}}"
+  columns:
+    - name: "序号"
+      type: "auto_number"
+    - name: "物料编码"
+      source_field: "WLDM"
+
+# 段落占位符
+paragraph_placeholders:
+  标题:
+    value: "通用生化产品供货价"
+
+# 话术配置（支持互斥组）
+speeches:
+  - id: "话术1.1"
+    type: "conditional"
+    mutex_group: "A"
+    conditions:
+      - field: "DJZMC"
+        operator: "contains"
+        value: "肝功"
+    content: "话术内容..."
+    variables:
+      - name: "肝功扣率"
+        default: "85"
+```
+
+**字段匹配规则**（支持双字段）:
+- 数值类型 value → 匹配 ID 字段（如 DJZ, BNGHJLXZ）
+- 字符串类型 value → 匹配名称字段（如 DJZMC）
+
 #### 任务列表
 
 | 序号 | 任务 | 文件路径 | 产出物 | 依赖 |
 |------|------|----------|--------|------|
-| 5.1 | Word 模板读取器 | `src/readers/word_template_reader.py` | 模板读取器 | Phase 4 |
-| 5.2 | 表格结构分析器 | `src/analyzers/table_analyzer.py` | 表格分析器 | 5.1 |
-| 5.3 | 数据填充引擎 | `src/fillers/data_filler.py` | 数据填充核心 | 5.1, 5.2 |
-| 5.4 | 表格行扩展器 | `src/fillers/row_expander.py` | 动态行扩展 | 5.3 |
-| 5.5 | 格式保持器 | `src/fillers/format_preserver.py` | 格式保持 | 5.3 |
-| 5.6 | 多模板生成器 | `src/generators/document_generator.py` | 批量生成 | 5.3, 5.4, 5.5 |
-| 5.7 | 文件打包器 | `src/utils/file_packer.py` | ZIP 打包 | 5.6 |
-| 5.8 | Word 生成单元测试 | `tests/test_word_generator.py` | 测试用例 | 5.6, 5.7 |
+| 5.1 | 模板元数据加载器 | `src/loaders/template_loader.py` | YAML 配置加载器 | Phase 4 |
+| 5.2 | 条件表达式解析器 | `src/parsers/condition_parser.py` | 条件解析引擎 | 5.1 |
+| 5.3 | 明细数据过滤器 | `src/filters/detail_filter.py` | 数据筛选器 | 5.2 |
+| 5.4 | 字段映射层 | `src/mappers/field_mapper.py` | 字段名映射 | 5.3 |
+| 5.5 | Word 模板读取器 | `src/readers/word_template_reader.py` | 模板读取器 | 5.1 |
+| 5.6 | 表格结构分析器 | `src/analyzers/table_analyzer.py` | 表格分析器 | 5.5 |
+| 5.7 | 数据填充引擎 | `src/fillers/data_filler.py` | 数据填充核心 | 5.3, 5.6 |
+| 5.8 | 表格行扩展器 | `src/fillers/row_expander.py` | 动态行扩展 | 5.7 |
+| 5.9 | 话术引擎 | `src/engines/speech_engine.py` | 话术匹配器 | 5.1, 5.3 |
+| 5.10 | 格式保持器 | `src/fillers/format_preserver.py` | 格式保持 | 5.7 |
+| 5.11 | 文档生成器 | `src/generators/document_generator.py` | 文档生成 | 5.8, 5.9, 5.10 |
+| 5.12 | 文件打包器 | `src/utils/file_packer.py` | ZIP 打包 | 5.11 |
+| 5.13 | Word 生成单元测试 | `tests/test_word_generator.py` | 测试用例 | 5.11, 5.12 |
 
 #### 产出物清单
+- [ ] 模板元数据加载器 (`src/loaders/template_loader.py`)
+- [ ] 条件表达式解析器 (`src/parsers/condition_parser.py`)
+- [ ] 明细数据过滤器 (`src/filters/detail_filter.py`)
+- [ ] 字段映射层 (`src/mappers/field_mapper.py`)
 - [ ] Word 模板读取器 (`src/readers/word_template_reader.py`)
 - [ ] 表格结构分析器 (`src/analyzers/table_analyzer.py`)
 - [ ] 数据填充引擎 (`src/fillers/data_filler.py`)
 - [ ] 表格行扩展器 (`src/fillers/row_expander.py`)
+- [ ] 话术引擎 (`src/engines/speech_engine.py`)
 - [ ] 格式保持器 (`src/fillers/format_preserver.py`)
 - [ ] 文档生成器 (`src/generators/document_generator.py`)
 - [ ] 文件打包器 (`src/utils/file_packer.py`)
 - [ ] Word 生成单元测试
+
+#### 配置依赖
+- `config/template_metadata/templates.yaml` - 模板引用主文件
+- `config/template_metadata/templates/*.yaml` - 35个模板独立配置文件
+- `docs/plan/phase-5/field_id_mapping.md` - 字段ID映射参考
 
 #### 风险点
 - **风险**: Word 模板格式不一致
@@ -211,6 +287,8 @@
   - **缓解**: 分批处理，内存优化
 - **风险**: 特殊字符导致文档损坏
   - **缓解**: 字符转义和编码处理
+- **风险**: 字段ID与数据库不一致
+  - **缓解**: 支持双字段匹配（ID+名称），提供映射参考文档
 
 ---
 
@@ -536,19 +614,30 @@ contract/
 │   ├── queries/
 │   │   ├── quotation.py
 │   │   └── quotation_detail.py
+│   ├── loaders/
+│   │   └── template_loader.py
+│   ├── parsers/
+│   │   ├── rule_parser.py
+│   │   └── condition_parser.py
+│   ├── filters/
+│   │   └── detail_filter.py
+│   ├── mappers/
+│   │   └── field_mapper.py
 │   ├── matchers/
 │   │   ├── template_matcher.py
 │   │   └── multi_matcher.py
+│   ├── engines/
+│   │   └── speech_engine.py
 │   ├── generators/
 │   │   └── document_generator.py
 │   ├── readers/
 │   │   └── word_template_reader.py
+│   ├── analyzers/
+│   │   └── table_analyzer.py
 │   ├── fillers/
 │   │   ├── data_filler.py
 │   │   ├── row_expander.py
 │   │   └── format_preserver.py
-│   ├── parsers/
-│   │   └── rule_parser.py
 │   ├── transformers/
 │   │   └── data_transformer.py
 │   ├── services/
@@ -565,13 +654,24 @@ contract/
 │   └── app.py
 ├── config/
 │   ├── settings.yaml.example
-│   └── field_mapping.yaml
+│   ├── field_mapping.yaml
+│   └── template_metadata/
+│       ├── templates.yaml
+│       └── templates/
+│           ├── 模板1.yaml
+│           ├── 模板2.yaml
+│           └── ... (35个模板)
 ├── tests/
 │   ├── unit/
 │   ├── integration/
 │   ├── e2e/
 │   └── performance/
 ├── docs/
+│   ├── plan/
+│   │   ├── phase-4/
+│   │   ├── phase-5/
+│   │   │   └── field_id_mapping.md
+│   │   └── implementation_plan.md
 │   ├── api/
 │   ├── user_guide.md
 │   └── deployment.md
@@ -618,6 +718,32 @@ mypy>=1.4.0
 
 ---
 
-*文档版本：1.0*
+## 10. Phase 5 设计更新记录
+
+本文档已根据 `docs/plan/phase-5/` 设计文档更新，主要变更：
+
+### 10.1 Phase 5 任务拆分
+
+将原有的 8 个任务拆分为 13 个任务，新增：
+- 模板元数据加载器 (`template_loader.py`)
+- 条件表达式解析器 (`condition_parser.py`)
+- 明细数据过滤器 (`detail_filter.py`)
+- 字段映射层 (`field_mapper.py`)
+- 话术引擎 (`speech_engine.py`)
+
+### 10.2 配置结构更新
+
+- 模板元数据从单一规则文件改为每个模板独立 YAML 文件
+- 新增 `config/template_metadata/templates/` 目录
+- 支持双字段匹配（ID + 名称）
+
+### 10.3 字段ID映射
+
+- 新增 `docs/plan/phase-5/field_id_mapping.md` 参考文档
+- 产品细分、定价组、供货价类型的ID映射
+
+---
+
+*文档版本：1.1*
 *创建日期：2026-03-06*
-*最后更新：2026-03-06*
+*最后更新：2026-03-10*

@@ -1,0 +1,89 @@
+# 模板元数据配置主文件
+# 版本: 1.0
+# 更新日期: 2026-03-10
+
+version: "1.0"
+description: "模板元数据配置 - 每个模板独立的规则文件"
+
+# 引用所有模板配置文件
+# 模板按类别分组
+
+templates:
+  # === 集采类模板 (3列) ===
+  - $ref: "templates/模板3.1.yaml"
+  - $ref: "templates/模板3.2.yaml"
+  - $ref: "templates/模板4.1.yaml"
+  - $ref: "templates/模板4.2.yaml"
+  - $ref: "templates/模板6.1.yaml"
+  - $ref: "templates/模板6.2.yaml"
+  - $ref: "templates/模板7.1.yaml"
+  - $ref: "templates/模板7.2.yaml"
+  - $ref: "templates/模板9.1.yaml"
+  - $ref: "templates/模板9.2.yaml"
+  - $ref: "templates/模板10.1.yaml"
+  - $ref: "templates/模板10.2.yaml"
+  - $ref: "templates/模板12.1.yaml"
+  - $ref: "templates/模板12.2.yaml"
+  - $ref: "templates/模板13.1.yaml"
+  - $ref: "templates/模板13.2.yaml"
+
+  # === 酶免胶体金类 (6列) ===
+  - $ref: "templates/模板1.yaml"
+  - $ref: "templates/模板17.yaml"
+
+  # === 通用生化类 (7列) ===
+  - $ref: "templates/模板2.yaml"
+  - $ref: "templates/模板5.yaml"
+  - $ref: "templates/模板8.yaml"
+  - $ref: "templates/模板11.yaml"
+  - $ref: "templates/模板14.yaml"
+
+  # === 外购试剂类 (8列) ===
+  - $ref: "templates/模板15.yaml"
+  - $ref: "templates/模板16.yaml"
+  - $ref: "templates/模板18.yaml"
+  - $ref: "templates/模板19.yaml"
+  - $ref: "templates/模板20.yaml"
+  - $ref: "templates/模板21.yaml"
+  - $ref: "templates/模板22.yaml"
+  - $ref: "templates/模板23.yaml"
+  - $ref: "templates/模板24.yaml"
+  - $ref: "templates/模板25.yaml"
+  - $ref: "templates/模板26.yaml"
+  - $ref: "templates/模板27.yaml"
+  - $ref: "templates/模板28.yaml"
+  - $ref: "templates/模板29.yaml"
+  - $ref: "templates/模板30.yaml"
+  - $ref: "templates/模板31.yaml"
+  - $ref: "templates/模板32.yaml"
+  - $ref: "templates/模板33.yaml"
+  - $ref: "templates/模板34.yaml"
+  - $ref: "templates/模板35.yaml"
+
+# 通用字段映射
+common_field_mappings:
+  WLDM:
+    - "物料编码"
+    - "SAP代码"
+  WLMS:
+    - "品名"
+    - "产品名称"
+  GG:
+    - "规格型号"
+    - "包装规格"
+    - "规格"
+  LSJ:
+    - "零售价"
+  GHJY:
+    - "供货价"
+  CPXF:
+    - "产品类别"
+    - "分类"
+    - "类别"
+
+# 通用话术变量默认值
+default_variables:
+  肝功扣率: "85"
+  通用扣率: "70"
+  北极星扣率: "25"
+  耗材扣率: "50"
