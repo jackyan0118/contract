@@ -25,6 +25,8 @@ from .api import (
     NotFoundException,
     ServiceException,
     ExternalServiceException,
+    AuthenticationError,
+    RateLimitError,
 )
 
 __all__ = [
@@ -55,4 +57,6 @@ __all__ = [
     "NotFoundException",
     "ServiceException",
     "ExternalServiceException",
+    "AuthenticationError",
+    "RateLimitError",
 ]

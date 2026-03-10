@@ -56,3 +56,27 @@ class ExternalServiceException(APIException):
             error_code=ErrorCode.EXTERNAL_SERVICE_ERROR,
             detail=detail,
         )
+
+
+class AuthenticationError(APIException):
+    """认证错误 - API Key 无效或过期"""
+
+    def __init__(self, message: str = "认证失败：无效的 API Key", **kwargs):
+        detail = {"type": "authentication", **kwargs.get("detail", {})}
+        super().__init__(
+            message=message,
+            error_code=ErrorCode.PERMISSION_DENIED,
+            detail=detail,
+        )
+
+
+class RateLimitError(APIException):
+    """限流错误 - 请求过于频繁"""
+
+    def __init__(self, retry_after: int = 60, **kwargs):
+        detail = {"type": "rate_limit", "retry_after": retry_after, **kwargs.get("detail", {})}
+        super().__init__(
+            message=f"请求过于频繁，请 {retry_after} 秒后重试",
+            error_code=ErrorCode.SERVICE_ERROR,
+            detail=detail,
+        )

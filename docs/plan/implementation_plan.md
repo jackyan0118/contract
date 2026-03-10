@@ -342,6 +342,8 @@ speeches:
 | 6.14 | 限流器内存泄漏 | P3 | 内存限流器无过期数据清理机制 | 后续优化 |
 | 6.15 | 生产环境 Redis 持久化 | P2 | 内存队列重启后任务丢失 | 后续优化 |
 
+详细设计见 `docs/plan/phase-6/technical-debt.md`
+
 #### 已修复的评审问题
 
 | 问题 | 修复说明 |
@@ -372,19 +374,21 @@ speeches:
 | 7.2 | 日志轮转配置 | `src/utils/logger.py` | 日志轮转工具 | 7.1 | ✅ 已实现 |
 | 7.3 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 | ✅ 已实现 |
 | 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理 | 7.3 | ✅ 已实现 |
-| 7.5 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 | 待实现 |
-| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 | 待实现 |
+| 7.5 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 | ✅ 已实现 |
+| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 | ✅ 已实现 |
 | 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 | 待实现 |
-| 7.8 | 新增认证异常 | `src/exceptions/api.py` | AuthenticationError | 7.3 | 待实现 |
-| 7.9 | 新增限流异常 | `src/exceptions/api.py` | RateLimitError | 7.3 | 待实现 |
+| 7.8 | 新增认证异常 | `src/exceptions/api.py` | AuthenticationError | 7.3 | ✅ 已实现 |
+| 7.9 | 新增限流异常 | `src/exceptions/api.py` | RateLimitError | 7.3 | ✅ 已实现 |
 
 #### 产出物清单
 - [x] 结构化日志模块 (`src/utils/structured_logger.py`)
 - [x] 日志轮转工具 (`src/utils/logger.py`)
 - [x] 错误处理中间件 (`src/api/middleware/error_handler.py`)
 - [x] 异常类层次 (`src/exceptions/*.py`)
-- [ ] 请求日志中间件 (`src/api/middleware/logging.py`)
-- [ ] 审计日志服务 (`src/services/audit_logger.py`)
+- [x] 请求日志中间件 (`src/api/middleware/logging.py`)
+- [x] 审计日志服务 (`src/services/audit_logger.py`)
+- [x] AuthenticationError (`src/exceptions/api.py`)
+- [x] RateLimitError (`src/exceptions/api.py`)
 - [ ] 日志清理任务 (`src/tasks/log_cleanup.py`)
 - [ ] AuthenticationError (`src/exceptions/api.py`)
 - [ ] RateLimitError (`src/exceptions/api.py`)
