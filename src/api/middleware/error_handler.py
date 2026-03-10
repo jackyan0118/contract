@@ -25,27 +25,39 @@ async def error_handler_middleware(
     try:
         return await call_next(request)
     except AppException as e:
-        # 业务异常
-        logger.error(f"业务异常：{e.message}", exc_info=False)
+        # 业务异常：只记录脱敏后的信息
+        logger.error(
+            f"业务异常: {e.error_code.value}",
+            extra={"error_code": e.error_code.value},
+            exc_info=False,
+        )
         return JSONResponse(
             status_code=_get_status_code(e.error_code),
             content={
-                "error": True,
-                "error_code": e.error_code.value,
-                "message": e.message,
-                "detail": e.detail,
+                "success": False,
+                "error": {
+                    "code": e.error_code.value,
+                    "message": e.message,
+                    "details": e.detail,
+                },
             },
         )
     except Exception as e:
-        # 未预期的异常
-        logger.error(f"未预期的异常：{str(e)}", exc_info=True)
+        # 未预期的异常：只记录类型，不记录消息
+        logger.error(
+            f"未预期的异常: {type(e).__name__}",
+            extra={"exception_type": type(e).__name__},
+            exc_info=False,
+        )
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
-                "error": True,
-                "error_code": "1000",
-                "message": "服务器内部错误",
-                "detail": "请稍后重试或联系技术支持",
+                "success": False,
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "服务器内部错误",
+                    "details": None,
+                },
             },
         )
 
