@@ -347,21 +347,25 @@ speeches:
 | 序号 | 任务 | 文件路径 | 产出物 | 依赖 |
 |------|------|----------|--------|------|
 | 7.1 | 结构化日志配置 | `src/utils/structured_logger.py` | 结构化日志 | Phase 6 |
-| 7.2 | 请求日志中间件 | `src/api/middleware/request_logger.py` | 日志中间件 | 7.1 |
-| 7.3 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理 | 7.1 |
-| 7.4 | 业务日志记录 | `src/services/audit_logger.py` | 业务日志 | 7.1 |
-| 7.5 | 日志查询接口 | `src/api/routes/logs.py` | 日志查询 API | 7.4 |
+| 7.2 | 日志轮转配置 | `src/utils/log_rotation.py` | 日志轮转工具 | 7.1 |
+| 7.3 | 请求日志中间件 | `src/api/middleware/logging.py` | 请求日志中间件 | 7.1 |
+| 7.4 | 错误处理中间件 | `src/api/middleware/error_handler.py` | 错误处理 | 7.1 |
+| 7.5 | 异常类定义 | `src/exceptions/*.py` | 异常类层次 | Phase 6 |
+| 7.6 | 审计日志服务 | `src/services/audit_logger.py` | 审计日志记录 | 7.1 |
+| 7.7 | 日志清理任务 | `src/tasks/log_cleanup.py` | 定时清理任务 | 7.2 |
 
 #### 产出物清单
 - [ ] 结构化日志模块 (`src/utils/structured_logger.py`)
-- [ ] 请求日志中间件 (`src/api/middleware/request_logger.py`)
+- [ ] 日志轮转工具 (`src/utils/log_rotation.py`)
+- [ ] 请求日志中间件 (`src/api/middleware/logging.py`)
 - [ ] 错误处理中间件 (`src/api/middleware/error_handler.py`)
-- [ ] 业务日志服务 (`src/services/audit_logger.py`)
-- [ ] 日志查询接口 (`src/api/routes/logs.py`)
+- [ ] 异常类层次 (`src/exceptions/*.py`)
+- [ ] 审计日志服务 (`src/services/audit_logger.py`)
+- [ ] 日志清理任务 (`src/tasks/log_cleanup.py`)
 
 #### 风险点
 - **风险**: 日志文件过大
-  - **缓解**: 日志轮转配置、日志级别控制
+  - **缓解**: 7天自动清理，10MB轮转
 
 ---
 
@@ -744,6 +748,36 @@ mypy>=1.4.0
 
 ---
 
-*文档版本：1.1*
+## 11. Phase 7 设计更新记录
+
+本文档已根据 `docs/plan/phase-7/` 设计文档更新，主要变更：
+
+### 11.1 日志设计
+
+- **日志格式**: JSON 结构化日志
+- **日志分类**: 应用日志、访问日志、错误日志、审计日志
+- **日志保留**: 7 天自动清理
+- **轮转策略**: 10MB 自动轮转
+
+### 11.2 审计日志
+
+- **存储位置**: 本地文件 `logs/audit.log`
+- **格式**: JSON Lines
+- **保留周期**: 7 天
+
+### 11.3 错误处理
+
+- 统一异常类层次结构
+- 错误码与 HTTP 状态码映射
+- 错误处理中间件
+
+### 11.4 任务调整
+
+- 新增：日志轮转工具、异常类定义、日志清理任务
+- 移除：日志查询接口（用户不需要）
+
+---
+
+*文档版本：1.2*
 *创建日期：2026-03-06*
 *最后更新：2026-03-10*

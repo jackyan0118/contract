@@ -5,23 +5,28 @@ import re
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from decimal import Decimal
+from enum import Enum
 
 from docx import Document
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+from src.fillers.constants import FIELD_MAPPING
+
 logger = logging.getLogger(__name__)
 
 
-# 字段映射配置
-FIELD_MAPPING = {
-    "产品细分": ("CPXF", None),
-    "定价组": ("DJZ", "DJZMC"),
-    "定价组名称": ("DJZ", "DJZMC"),
-    "是否集采": ("SFJC", None),
-    "供货价类型": ("BNGHJLX", "BNGHHJLXZ"),
-    "物料生成来源": ("LYXH", None),
-}
+class Operator(str, Enum):
+    """操作符枚举"""
+    EQ = "="
+    NE = "!="
+    CONTAINS = "contains"
+    IN = "in"
+    NOT_IN = "not_in"
+    GT = ">"
+    LT = "<"
+    GTE = ">="
+    LTE = "<="
 
 
 @dataclass
@@ -177,13 +182,13 @@ class DataFiller:
 
         filtered = []
         for data in data_list:
-            if self._match_conditions(data, conditions):
+            if self.match_conditions(data, conditions):
                 filtered.append(data)
 
         logger.info(f"Filtered {len(data_list)} rows to {len(filtered)} rows")
         return filtered
 
-    def _match_conditions(
+    def match_conditions(
         self,
         data: Dict[str, Any],
         conditions: List[FilterCondition]

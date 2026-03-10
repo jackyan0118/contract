@@ -3,21 +3,39 @@
 import yaml
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from typing import Dict, List, Optional, Any, Literal
+from pydantic import BaseModel, Field, ConfigDict
+from enum import Enum
 
 logger = logging.getLogger(__name__)
 
 
+class Operator(str, Enum):
+    """操作符枚举"""
+    EQ = "="
+    NE = "!="
+    CONTAINS = "contains"
+    IN = "in"
+    NOT_IN = "not_in"
+    GT = ">"
+    LT = "<"
+    GTE = ">="
+    LTE = "<="
+
+
 class ConditionModel(BaseModel):
     """条件模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     field: str
-    operator: str = "="
+    operator: Operator = Operator.EQ
     value: Any
 
 
 class FilterRuleModel(BaseModel):
     """过滤规则模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     name: str
     conditions: List[ConditionModel] = Field(default_factory=list)
@@ -25,35 +43,57 @@ class FilterRuleModel(BaseModel):
 
 class DetailFilterModel(BaseModel):
     """明细过滤模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     filter_rules: List[FilterRuleModel] = Field(default_factory=list)
+
+
+class ColumnType(str, Enum):
+    """列类型枚举"""
+    TEXT = "text"
+    AUTO_NUMBER = "auto_number"
 
 
 class TableColumnModel(BaseModel):
     """表格列模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     source_field: str
     source_table: str = "UF_HTJGKST_DT1"
-    type: str = "text"  # text, auto_number
+    type: ColumnType = ColumnType.TEXT
     transform: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TableModel(BaseModel):
     """表格配置模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     placeholders: Dict[str, str] = Field(default_factory=dict)
     columns: List[TableColumnModel] = Field(default_factory=list)
 
 
 class SpeechVariableModel(BaseModel):
     """话术变量模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     default: str
 
 
+class SpeechType(str, Enum):
+    """话术类型枚举"""
+    CONDITIONAL = "conditional"
+    FIXED = "fixed"
+
+
 class SpeechModel(BaseModel):
     """话术模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
-    type: str = "conditional"  # conditional, fixed
+    type: SpeechType = SpeechType.CONDITIONAL
     mutex_group: Optional[str] = None
     conditions: List[ConditionModel] = Field(default_factory=list)
     content: str = ""
@@ -62,6 +102,8 @@ class SpeechModel(BaseModel):
 
 class TemplateMetadataModel(BaseModel):
     """模板元数据模型"""
+    model_config = ConfigDict(populate_by_name=True)
+
     id: str
     name: str
     file: str

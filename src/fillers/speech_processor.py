@@ -3,10 +3,18 @@
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from enum import Enum
 
 from src.fillers.data_filler import DataFiller, FilterCondition
+from src.fillers.constants import DEFAULT_SPEECH_VARIABLES
 
 logger = logging.getLogger(__name__)
+
+
+class SpeechType(str, Enum):
+    """话术类型枚举"""
+    CONDITIONAL = "conditional"
+    FIXED = "fixed"
 
 
 @dataclass
@@ -14,7 +22,7 @@ class Speech:
     """话术"""
     id: str
     content: str
-    type: str  # conditional, fixed
+    type: SpeechType = SpeechType.CONDITIONAL
     mutex_group: Optional[str] = None
     variables: Dict[str, str] = field(default_factory=dict)
     conditions: List[FilterCondition] = field(default_factory=list)
@@ -23,13 +31,8 @@ class Speech:
 class SpeechProcessor:
     """话术处理器"""
 
-    # 默认话术变量
-    DEFAULT_VARIABLES = {
-        "肝功扣率": "85",
-        "通用扣率": "70",
-        "北极星扣率": "25",
-        "耗材扣率": "50",
-    }
+    # 默认话术变量（从 constants 导入）
+    DEFAULT_VARIABLES = DEFAULT_SPEECH_VARIABLES
 
     def __init__(self):
         self.data_filler = DataFiller()
@@ -99,7 +102,7 @@ class SpeechProcessor:
             return True
 
         # 实际的条件检查
-        return self.data_filler._match_conditions(data, speech.conditions)
+        return self.data_filler.match_conditions(data, speech.conditions)
 
     def _replace_speech_variables(
         self,
