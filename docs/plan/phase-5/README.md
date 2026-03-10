@@ -475,19 +475,384 @@ speeches:
 
 ---
 
-## 任务列表
+## 专家建议补充设计
 
-| 序号 | 任务 | 产出物 | 状态 |
-|------|------|--------|------|
-| 5.1 | Word 模板读取器 | `src/readers/word_template_reader.py` | ✅ 已完成 |
-| 5.2 | 表格结构分析 | 合并到5.1 | ✅ 已完成 |
-| 5.3 | 数据填充引擎 | `src/fillers/data_filler.py` | ✅ 已完成 |
-| 5.4 | 表格行扩展器 | `src/fillers/row_expander.py` | ✅ 已完成 |
-| 5.5 | 格式保持器 | `src/fillers/format_preserver.py` | ✅ 已完成 |
-| 5.6 | 多模板生成器 | `src/generators/document_generator.py` | ✅ 已完成 |
-| 5.7 | 文件打包器 | `src/utils/file_packer.py` | ✅ 已完成 |
-| 5.8 | Word 生成单元测试 | `tests/unit/test_document_generator.py` | ✅ 已完成 |
+### 5.9 模板配置加载器
+
+**问题**: 设计要求从 `config/template_metadata/templates/` 加载 YAML 配置，当前未实现
+
+**解决方案**:
+
+```python
+# src/config/template_loader.py
+import yaml
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, field
+from pydantic import BaseModel, Field
+
+
+class ConditionModel(BaseModel):
+    """条件模型"""
+    field: str
+    operator: str = "="
+    value: Any
+
+
+class FilterRuleModel(BaseModel):
+    """过滤规则模型"""
+    id: str
+    name: str
+    conditions: List[ConditionModel] = Field(default_factory=list)
+
+
+class DetailFilterModel(BaseModel):
+    """明细过滤模型"""
+    filter_rules: List[FilterRuleModel] = Field(default_factory=list)
+
+
+class TableColumnModel(BaseModel):
+    """表格列模型"""
+    name: str
+    source_field: str
+    source_table: str = "UF_HTJGKST_DT1"
+    type: str = "text"  # text, auto_number
+    transform: Optional[str] = None
+    params: Dict[str, Any] = Field(default_factory=dict)
+
+
+class TableModel(BaseModel):
+    """表格配置模型"""
+    placeholders: Dict[str, str] = Field(default_factory=dict)
+    columns: List[TableColumnModel] = Field(default_factory=list)
+
+
+class SpeechVariableModel(BaseModel):
+    """话术变量模型"""
+    name: str
+    default: str
+
+
+class SpeechModel(BaseModel):
+    """话术模型"""
+    id: str
+    type: str = "conditional"  # conditional, fixed
+    mutex_group: Optional[str] = None
+    conditions: List[ConditionModel] = Field(default_factory=list)
+    content: str = ""
+    variables: List[SpeechVariableModel] = Field(default_factory=list)
+
+
+class TemplateMetadataModel(BaseModel):
+    """模板元数据模型"""
+    id: str
+    name: str
+    file: str
+    category: str = ""
+    match_conditions: Dict[str, Any] = Field(default_factory=dict)
+    detail_filter: Optional[DetailFilterModel] = None
+    table: Optional[TableModel] = None
+    paragraph_placeholders: Dict[str, str] = Field(default_factory=dict)
+    speeches: List[SpeechModel] = Field(default_factory=list)
+
+
+class TemplateLoader:
+    """模板配置加载器"""
+
+    def __init__(self, config_dir: str = "config/template_metadata/templates"):
+        self.config_dir = Path(config_dir)
+
+    def load(self, template_id: str) -> TemplateMetadataModel:
+        """加载指定模板的配置"""
+        config_file = self.config_dir / f"{template_id}.yaml"
+
+        if not config_file.exists():
+            raise FileNotFoundError(f"Template config not found: {config_file}")
+
+        with open(config_file, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+
+        return TemplateMetadataModel(**data)
+
+    def load_all(self) -> List[TemplateMetadataModel]:
+        """加载所有模板配置"""
+        templates = []
+
+        for config_file in self.config_dir.glob("*.yaml"):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f)
+                templates.append(TemplateMetadataModel(**data))
+
+        return templates
+```
+
+**文件位置**: `src/config/template_loader.py`
+
+---
+
+### 5.10 统一字段映射模块
+
+**问题**: `FIELD_MAPPING` 在多处重复定义
+
+**解决方案**: 提取到共享模块
+
+```python
+# src/fillers/constants.py
+"""填充模块常量定义"""
+
+# 字段映射配置
+# 中文别名 -> (ID字段, 名称字段)
+FIELD_MAPPING = {
+    "产品细分": ("CPXF", None),
+    "定价组": ("DJZ", "DJZMC"),
+    "定价组名称": ("DJZ", "DJZMC"),
+    "是否集采": ("SFJC", None),
+    "供货价类型": ("BNGHJLX", "BNGHJLXZ"),
+    "物料生成来源": ("LYXH", None),
+}
+
+# 默认话术变量
+DEFAULT_SPEECH_VARIABLES = {
+    "肝功扣率": "85",
+    "通用扣率": "70",
+    "北极星扣率": "25",
+    "耗材扣率": "50",
+}
+
+# 字段推断映射
+HEADER_TO_FIELD = {
+    "序号": "序号",
+    "物料编码": "WLDM",
+    "SAP代码": "WLDM",
+    "品名": "WLMS",
+    "产品名称": "WLMS",
+    "简称": "WLMS",
+    "规格": "GG",
+    "规格型号": "GG",
+    "包装规格": "GG",
+    "零售价": "LSJ",
+    "供货价": "GHJY",
+    "产品类别": "CPXF",
+    "分类": "CPXF",
+}
+```
+
+**文件位置**: `src/fillers/constants.py`
+
+---
+
+### 5.11 detail_filter 集成
+
+**问题**: DataFiller.filter_data() 已实现，但 DocumentGenerator 未调用
+
+**解决方案**: 在 DocumentGenerator 中集成过滤逻辑
+
+```python
+# 在 DocumentGenerator 中集成
+class DocumentGenerator:
+    def __init__(self, template_dir: str = "docs/template",
+                 config_dir: str = "config/template_metadata/templates"):
+        self.template_dir = Path(template_dir)
+        self.config_dir = Path(config_dir)
+        self.template_loader = TemplateLoader(config_dir)
+        # ... 其他初始化
+
+    def _fill_tables(self, doc: Document,
+                     template_config: TemplateMetadataModel,
+                     detail_data_list: List[Dict[str, Any]]) -> None:
+        """填充表格（带过滤）"""
+        # 应用 detail_filter 过滤数据
+        if template_config.detail_filter:
+            filtered_data = self._apply_detail_filter(
+                template_config.detail_filter,
+                detail_data_list
+            )
+        else:
+            filtered_data = detail_data_list
+
+        # 填充表格
+        # ...
+
+    def _apply_detail_filter(self,
+                            filter_config: DetailFilterModel,
+                            data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """应用明细过滤规则"""
+        if not filter_config.filter_rules:
+            return data_list
+
+        # 合并所有规则的过滤条件
+        all_conditions = []
+        for rule in filter_config.filter_rules:
+            all_conditions.extend(rule.conditions)
+
+        # 使用 DataFiller 过滤
+        filter_conditions = [
+            FilterCondition(
+                field=c.field,
+                operator=c.operator,
+                value=c.value
+            )
+            for c in all_conditions
+        ]
+
+        return self.data_filler.filter_data(data_list, filter_conditions)
+```
+
+---
+
+### 5.12 话术完整集成
+
+**问题**: DocumentGenerator._process_speeches() 是简化实现，未使用 SpeechProcessor
+
+**解决方案**: 集成 SpeechProcessor
+
+```python
+# 在 DocumentGenerator 中
+from src.fillers.speech_processor import SpeechProcessor, Speech
+
+class DocumentGenerator:
+    def __init__(self, ...):
+        self.speech_processor = SpeechProcessor()
+        # ...
+
+    def _fill_document(self, doc: Document,
+                       template_config: TemplateMetadataModel,
+                       quote_data: Dict[str, Any],
+                       detail_data_list: List[Dict[str, Any]]) -> None:
+        """填充文档内容"""
+        # 1. 填充段落占位符
+        self._fill_paragraphs(doc, template_config, quote_data)
+
+        # 2. 填充表格
+        self._fill_tables(doc, template_config, detail_data_list)
+
+        # 3. 处理话术（完整集成）
+        self._process_speeches(doc, template_config, quote_data)
+
+    def _process_speeches(self, doc: Document,
+                         template_config: TemplateMetadataModel,
+                         quote_data: Dict[str, Any]) -> None:
+        """处理话术（完整实现）"""
+        if not template_config.speeches:
+            return
+
+        # 转换为 Speech 对象
+        speeches = []
+        for s in template_config.speeches:
+            speech = Speech(
+                id=s.id,
+                type=s.type,
+                content=s.content,
+                mutex_group=s.mutex_group,
+                variables={v.name: v.default for v in s.variables}
+            )
+            speeches.append(speech)
+
+        # 处理话术
+        speech_contents = self.speech_processor.process_speeches(speeches, quote_data)
+
+        # 填充话术占位符
+        for para in doc.paragraphs:
+            if "{{#话术}}" in para.text or "{{话术}}" in para.text:
+                # 合并所有话术内容
+                full_speech = "\n".join(speech_contents)
+                para.text = para.text.replace("{{#话术}}", "")
+                para.text = para.text.replace("{{/话术}}", "")
+                para.text = para.text.replace("{{话术}}", full_speech)
+```
+
+---
+
+### 5.13 Pydantic 模型优化
+
+**问题**: 使用 dataclass，建议改为 Pydantic
+
+**解决方案**: 逐步迁移到 Pydantic
+
+```python
+# 推荐的数据模型（Pydantic）
+from pydantic import BaseModel, Field, field_validator
+from typing import Literal, Optional, Any, List
+from enum import Enum
+
+
+class Operator(str, Enum):
+    """操作符枚举"""
+    EQ = "="
+    NE = "!="
+    CONTAINS = "contains"
+    IN = "in"
+    NOT_IN = "not_in"
+    GT = ">"
+    LT = "<"
+    GTE = ">="
+    LTE = "<="
+
+
+class Condition(BaseModel):
+    """条件模型（Pydantic）"""
+    field: str
+    operator: Operator
+    value: Any
+
+    @field_validator('operator', mode='before')
+    @classmethod
+    def validate_operator(cls, v):
+        if isinstance(v, str):
+            return Operator(v)
+        return v
+```
+
+---
+
+## 实施任务清单
+
+| 序号 | 任务 | 产出物 | 依赖 | 状态 |
+|------|------|--------|------|------|
+| 5.9 | 模板配置加载器 | `src/config/template_loader.py` | Phase 5 基础 | ⬜ 待开发 |
+| 5.10 | 统一字段映射 | `src/fillers/constants.py` | 5.9 | ⬜ 待开发 |
+| 5.11 | detail_filter 集成 | 合并到 DocumentGenerator | 5.9, 5.10 | ⬜ 待开发 |
+| 5.12 | 话术完整集成 | 合并到 DocumentGenerator | 5.9 | ⬜ 待开发 |
+| 5.13 | Pydantic 模型优化 | 重构 data_filler.py | 5.10 | ⬜ 待开发 |
+| 5.14 | 补充单元测试 | tests/unit/test_*.py | 5.9-5.13 | ⬜ 待开发 |
+
+---
+
+## 依赖关系
+
+```
+Phase 5 基础模块
+       │
+       ▼
+  5.9  模板配置加载器
+       │
+       ▼
+  5.10 统一字段映射
+       │
+       ▼
+  5.11 detail_filter 集成
+       │
+       ▼
+  5.12 话术完整集成
+       │
+       ▼
+  5.13 Pydantic 模型优化
+       │
+       ▼
+  5.14 补充单元测试
+```
+
+---
+
+## 风险与缓解
+
+| 风险 | 等级 | 缓解措施 |
+|------|------|----------|
+| YAML 配置格式变更 | 高 | 添加 schema 验证 |
+| 测试覆盖率不足 | 中 | 按优先级补充测试用例 |
+| Pydantic 迁移破坏现有功能 | 中 | 逐步迁移，保持向后兼容 |
 
 ---
 
 *更新时间：2026-03-10*
+*版本：1.1（专家建议补充版）*
