@@ -22,7 +22,7 @@ async def get_task_status(
     task_id: str,
     user: str = Depends(verify_api_key),
 ) -> ApiResponse[AsyncTaskData]:
-    """查询任务状态"""
+    """查询任务状态（仅任务创建者可查询）"""
     task_manager = get_task_manager()
     task = task_manager.get_task(task_id)
 
@@ -32,6 +32,16 @@ async def get_task_status(
             detail={
                 "code": ErrorCode.TASK_NOT_FOUND,
                 "message": f"任务不存在: {task_id}",
+            },
+        )
+
+    # 检查权限：只有任务创建者可以查询
+    if not task_manager.check_task_access(task_id, user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.PERMISSION_DENIED,
+                "message": "无权访问此任务",
             },
         )
 
@@ -68,7 +78,7 @@ async def cancel_task(
     task_id: str,
     user: str = Depends(verify_api_key),
 ) -> ApiResponse:
-    """取消任务"""
+    """取消任务（仅任务创建者可取消）"""
     task_manager = get_task_manager()
     task = task_manager.get_task(task_id)
 
@@ -78,6 +88,16 @@ async def cancel_task(
             detail={
                 "code": ErrorCode.TASK_NOT_FOUND,
                 "message": f"任务不存在: {task_id}",
+            },
+        )
+
+    # 检查权限：只有任务创建者可以取消
+    if not task_manager.check_task_access(task_id, user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.PERMISSION_DENIED,
+                "message": "无权访问此任务",
             },
         )
 

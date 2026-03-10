@@ -201,7 +201,7 @@ async def batch_generate(
 
     # 大于等于10个或明确要求异步，采用异步模式
     task_manager = get_task_manager()
-    task = task_manager.create_task(total=len(wybs_list))
+    task = task_manager.create_task(user_id=user, total=len(wybs_list))
 
     # 启动后台任务
     background_tasks.add_task(process_batch_task, task.task_id, wybs_list)
