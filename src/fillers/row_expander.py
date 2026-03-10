@@ -52,6 +52,15 @@ class RowExpander:
             row = table.rows[table_row_idx]
             self._fill_row(row, data, columns, row_idx + 1)
 
+        # 删除模板行（用于复制格式的行）
+        if template_row_idx >= 0 and template_row_idx < len(table.rows):
+            # 获取模板行
+            template_row = table.rows[template_row_idx]
+            # 检查是否所有单元格都是空的
+            if all(cell.text.strip() == '' for cell in template_row.cells):
+                # 删除空模板行
+                template_row._element.getparent().remove(template_row._element)
+
         logger.info(f"Expanded table with {len(data_list)} rows")
 
     def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1) -> None:
