@@ -10,6 +10,14 @@ from typing import Generator, Optional
 
 import oracledb
 
+# 启用 Thick 模式以支持旧版 Oracle 数据库
+# 注意: 需要安装 oracle-instantclient-basic
+try:
+    oracledb.init_oracle_client()
+except Exception:
+    # 如果没有安装 Instant Client，Thin 模式仍然可用
+    pass
+
 from src.database.config import get_database_config
 from src.exceptions import ConnectionException, PoolExhaustedException
 from src.utils.logger import get_logger
@@ -59,7 +67,6 @@ class ConnectionPool:
                     timeout=db_config.connect_timeout,
                     wait_timeout=db_config.command_timeout * 1000,
                     getmode=oracledb.POOL_GETMODE_WAIT,
-                    max_lifetime=db_config.max_lifetime,
                 )
                 self._initialized = True
                 logger.info(
