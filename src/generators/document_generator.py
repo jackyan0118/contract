@@ -195,6 +195,7 @@ class DocumentGenerator:
             is_detail_table = False
             template_row_idx = -1
             speech_row_idx = -1
+            speech_row_content = None
 
             # 第一遍：清除所有占位符并找到关键行
             for row_idx, row in enumerate(table.rows):
@@ -215,18 +216,18 @@ class DocumentGenerator:
                 # 检查是否是话术行
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
                     speech_row_idx = row_idx
+                    # 保存话术行内容用于后续添加
+                    speech_row_content = []
+                    for cell in row.cells:
+                        cell_text = ""
+                        for para in cell.paragraphs:
+                            cell_text += para.text
+                        speech_row_content.append(cell_text)
 
             if not is_detail_table:
                 continue
 
             start_row = template_row_idx + 1  # 从模板行之后开始插入数据
-
-            # 如果话术行在模板行之后，需要特殊处理
-            # 方案：先记录话术行位置，填充数据后，在最后处理话术
-            speech_row_relative_idx = -1
-            if speech_row_idx > template_row_idx:
-                # 话术行在模板行之后，填充数据后会移到后面
-                speech_row_relative_idx = speech_row_idx - template_row_idx - 1
 
             # 应用 detail_filter 过滤数据
             filtered_data = self._apply_detail_filter(template_config, data_list)
@@ -240,7 +241,20 @@ class DocumentGenerator:
             # 填充数据
             self.row_expander.expand(table, filtered_data, columns, start_row, template_row_idx)
 
-            # 处理话术占位符（表格单元格中，包括最后一行）
+            # 添加话术行（在最后）
+            if speech_row_content:
+                new_row = table.add_row()
+                for idx, cell in enumerate(new_row.cells):
+                    if idx < len(speech_row_content):
+                        cell_text = speech_row_content[idx]
+                        # 替换话术占位符
+                        for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
+                            cell_text = cell_text.replace(f"{{{{{var_name}}}}}", default_value)
+                        cell_text = cell_text.replace("{{#话术}}", "").replace("{{/话术}}", "")
+                        if cell.paragraphs:
+                            cell.paragraphs[0].text = cell_text
+
+            # 处理话术占位符（表格单元格中）
             self._process_table_speeches(table)
 
     def _apply_detail_filter(self,

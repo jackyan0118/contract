@@ -23,8 +23,7 @@ class RowExpander:
         data_list: List[Dict[str, Any]],
         columns: List[Dict[str, str]],
         start_row: int = 1,
-        template_row_idx: int = -1,
-        exclude_rows: list = None
+        template_row_idx: int = -1
     ) -> None:
         """扩展表格行
 
@@ -41,7 +40,7 @@ class RowExpander:
             return
 
         # 确保有足够的行
-        self._ensure_rows(table, len(data_list), start_row, template_row_idx, exclude_rows)
+        self._ensure_rows(table, len(data_list), start_row, template_row_idx)
 
         # 填充数据
         for row_idx, data in enumerate(data_list):
