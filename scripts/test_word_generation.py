@@ -157,6 +157,9 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test") -> 
         print(f"✅ 匹配到模板: {matched_template.id} - {matched_template.name}")
         print(f"   模板文件: {matched_template.file}")
 
+        # 将匹配数据合并到报价单数据中，用于话术匹配
+        quotation.update(match_data)
+
         # 检查模板文件是否存在 (相对于 templates 目录)
         template_file = Path("templates") / matched_template.file
         if not template_file.exists():

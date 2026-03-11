@@ -60,13 +60,20 @@ class RowExpander:
             else:
                 rows_to_add = max(0, len(data_list) - existing_data_rows)
 
-        # 清空占位行内容（如果有）
+        # 清空占位行内容
+        # 注意：当 replace_placeholder=True 时，直接清空占位行，不需要检查标记
         if replace_placeholder and start_row < len(table.rows):
             placeholder_row = table.rows[start_row]
-            row_text = "".join(cell.text for cell in placeholder_row.cells)
-            if "{{#明细表}}" in row_text or "{{/明细表}}" in row_text or row_text.strip() == "":
-                for cell in placeholder_row.cells:
-                    cell.text = ""
+            for cell in placeholder_row.cells:
+                cell.text = ""
+
+        # 删除中间行（保留话术行在最后）
+        # 当 has_speech_row=True 时，删除 start_row+1 到倒数第二行之间的所有行
+        if replace_placeholder and has_speech_row and start_row + 1 < len(table.rows) - 1:
+            rows_to_remove = len(table.rows) - start_row - 2
+            for _ in range(rows_to_remove):
+                last_row = table.rows[-2]
+                last_row._element.getparent().remove(last_row._element)
 
         # 添加新行
         for _ in range(rows_to_add):

@@ -253,6 +253,10 @@ class DocumentGenerator:
             # 填充数据 - 从占位行位置开始（替换占位行）
             # 根据是否有话术行设置 has_speech_row 参数
             has_speech_row = speech_row_content is not None
+
+            # 调试：检查过滤后的数据
+            logger.info(f"filtered_data count: {len(filtered_data)}, columns[0]: {columns[0] if columns else 'empty'}")
+
             self.row_expander.expand(table, filtered_data, columns, template_row_idx, template_row_idx, True, has_speech_row)
 
             # 替换最后一行（话术行）中的占位符
