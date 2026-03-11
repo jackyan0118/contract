@@ -16,7 +16,7 @@ from src.fillers.row_expander import RowExpander
 from src.fillers.format_preserver import FormatPreserver
 from src.fillers.speech_processor import SpeechProcessor, Speech
 from src.fillers.constants import DEFAULT_SPEECH_VARIABLES, HEADER_TO_FIELD
-from src.config.template_loader import TemplateLoader, TemplateMetadataModel
+from src.config.template_loader import TemplateLoader, TemplateMetadataModel, ColumnType
 from src.models.template_rule import TemplateRule
 from src.exceptions import DocumentGenerateException
 
@@ -344,7 +344,7 @@ class DocumentGenerator:
         columns = []
         for col in table_config.columns:
             # auto_number 类型不需要 source_field
-            field = col.source_field if col.type != "auto_number" else ""
+            field = col.source_field if col.type != ColumnType.AUTO_NUMBER else ""
             columns.append({
                 "name": col.name,
                 "field": field,
