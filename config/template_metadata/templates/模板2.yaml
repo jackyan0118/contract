@@ -4,21 +4,31 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: 通用生化试剂
+      value: '21'
+      value_type: bm  # BM编码，代码会自动转换为ID
     - field: LYXH
       operator: '='
-      value: 2
+      value: '2'
     name: 物料生成来源2
   - conditions:
     - field: CPXF
       operator: '='
-      value: 通用生化试剂
+      value: '21'
+      value_type: bm
     - field: LYXH
       operator: '='
-      value: 1
+      value: '1'
     - field: DJZMC
       operator: in
       value:
+      - 通用生化-非集采项目
+      - 通用生化-肝功
+      - 通用生化-肾功和心肌酶
+      - 通用生化-江西糖代谢
+      - 通用生化-肝功-含校准/质控
+      - 通用生化-肾功和心肌酶-含校准/质控
+      - 通用生化-江西糖代谢-含校准/质控
+      - 通用生化-非集采项目-含校准/质控
       - 通用特殊生化-非集采项目
       - 通用特殊生化-肝功
       - 通用特殊生化-肝功-含校准/质控
@@ -27,9 +37,10 @@ detail_filter:
       - 通用特殊生化-江西糖代谢-含校准/质控
       - 通用特殊生化-肾功和心肌酶-含校准/质控
       - 通用特殊生化-非集采项目-含校准/质控
+      - 生化单独的校准品/质控品
     - field: SFJC
       operator: '!='
-      value: 0
+      value: '0'
     name: 物料生成来源1-特殊定价组
   description: 通用生化试剂明细筛选
 file: 模板2：通用生化产品价格模版.docx

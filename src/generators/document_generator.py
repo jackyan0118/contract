@@ -259,44 +259,39 @@ class DocumentGenerator:
 
             self.row_expander.expand(table, filtered_data, columns, template_row_idx, template_row_idx, True, has_speech_row)
 
-            # 替换最后一行（话术行）中的占位符
-            # 注意：expand 后原始话术行已被数据覆盖，需要使用之前保存的 speech_row_content
-            if speech_row_content and len(table.rows) > 0:
-                # 获取实际话术内容
-                speech_contents = self._get_speech_contents(template_config, quote_data)
-                full_speech = "\n".join(speech_contents)
+            # 获取话术内容
+            speech_contents = self._get_speech_contents(template_config, quote_data)
+            full_speech = "\n".join(speech_contents)
 
-                # 使用保存的话术行内容替换最后一行
-                speech_row = table.rows[-1]
-                for cell_idx, cell in enumerate(speech_row.cells):
-                    if cell_idx < len(speech_row_content):
-                        # 使用保存的话术行内容作为基础
-                        text = speech_row_content[cell_idx]
-                    else:
-                        text = ""
+            # 替换变量占位符
+            for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
+                full_speech = full_speech.replace(f"{{{{{var_name}}}}}", default_value)
 
-                    if "{{#话术}}" in text or "{{话术}}" in text or "{{/话术}}" in text:
-                        # Cell 0 保留原文本"其他"
+            # 直接找到包含话术占位符的行，替换占位符
+            for row_idx, row in enumerate(table.rows):
+                row_text = ""
+                for cell in row.cells:
+                    row_text += cell.text
+
+                if "{{#话术}}" in row_text or "{{话术}}" in row_text:
+                    # 找到话术行，替换占位符
+                    # Cell 0 保留 "其他"，Cell 1 填充话术，Cell 2-6 清空
+                    for cell_idx, cell in enumerate(row.cells):
+                        text = cell.text
                         if cell_idx == 0:
-                            # 只清除话术标记
+                            # Cell 0 保留 "其他"
                             text = text.replace("{{#话术}}", "")
                             text = text.replace("{{/话术}}", "")
-                        else:
-                            # Cell 1-6 替换为话术内容
+                            text = text.replace("{{话术}}", "")
+                        elif cell_idx == 1:
+                            # Cell 1 填充话术内容
                             text = text.replace("{{#话术}}", full_speech)
                             text = text.replace("{{/话术}}", "")
                             text = text.replace("{{话术}}", full_speech)
-                        # 替换变量占位符
-                        for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
-                            text = text.replace(f"{{{{{var_name}}}}}", default_value)
-
-                    # 清空单元格并设置新内容
-                    cell.text = ""
-                    if cell.paragraphs:
-                        cell.paragraphs[0].text = text
-
-            # 处理话术占位符（表格单元格中）
-            self._process_table_speeches(table)
+                        else:
+                            # Cell 2-6 清空
+                            text = ""
+                        cell.text = text
 
     def _apply_detail_filter(self,
                             template_config: Optional[TemplateMetadataModel],
@@ -315,24 +310,42 @@ class DocumentGenerator:
 
         filter_config = template_config.detail_filter
 
-        if not filter_config.filter_rules:
+        # 使用 get_rules() 方法兼容 filter_rules 和 condition_groups
+        filter_rules = filter_config.get_rules()
+        if not filter_rules:
             return data_list
 
-        # 合并所有规则的过滤条件
-        all_conditions = []
-        for rule in filter_config.filter_rules:
+        # 处理条件组（组之间是 OR 关系）
+        # 每个组内的条件是 AND 关系
+        all_filtered = []
+
+        for rule in filter_rules:
+            # 组内条件（AND 关系）
+            group_conditions = []
             for cond in rule.conditions:
-                all_conditions.append(FilterCondition(
+                group_conditions.append(FilterCondition(
                     field=cond.field,
                     operator=cond.operator,
-                    value=cond.value
+                    value=cond.value,
+                    value_type=cond.value_type
                 ))
 
-        if not all_conditions:
-            return data_list
+            if group_conditions:
+                # 过滤符合该组条件的数据
+                filtered = self.data_filler.filter_data(data_list, group_conditions)
+                all_filtered.extend(filtered)
 
-        # 使用 DataFiller 过滤
-        filtered = self.data_filler.filter_data(data_list, all_conditions)
+        # 去重
+        seen = set()
+        unique_filtered = []
+        for item in all_filtered:
+            key = item.get('WLDM') or item.get('ID') or id(item)
+            if key not in seen:
+                seen.add(key)
+                unique_filtered.append(item)
+
+        logger.info(f"Filtered {len(data_list)} rows to {len(unique_filtered)} rows")
+        return unique_filtered
         logger.info(f"Filtered {len(data_list)} rows to {len(filtered)} rows")
         return filtered
 

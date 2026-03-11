@@ -30,22 +30,32 @@ class ConditionModel(BaseModel):
     field: str
     operator: Operator = Operator.EQ
     value: Any
+    value_type: Optional[str] = None  # 可选：指定值的类型，如 "bm" 表示BM编码需转换为ID
 
 
 class FilterRuleModel(BaseModel):
     """过滤规则模型"""
     model_config = ConfigDict(populate_by_name=True)
 
-    id: str
-    name: str
+    id: Optional[str] = None  # 兼容：YAML中使用name作为标识
+    name: Optional[str] = None
     conditions: List[ConditionModel] = Field(default_factory=list)
+
+    def get_id(self) -> str:
+        """获取规则ID"""
+        return self.id or self.name or ""
 
 
 class DetailFilterModel(BaseModel):
     """明细过滤模型"""
     model_config = ConfigDict(populate_by_name=True)
 
-    filter_rules: List[FilterRuleModel] = Field(default_factory=list)
+    filter_rules: Optional[List[FilterRuleModel]] = Field(default_factory=list)
+    condition_groups: Optional[List[FilterRuleModel]] = Field(default_factory=list)  # 兼容旧版YAML
+
+    def get_rules(self) -> List[FilterRuleModel]:
+        """获取过滤规则，兼容新旧版本"""
+        return self.filter_rules if self.filter_rules else self.condition_groups or []
 
 
 class ColumnType(str, Enum):

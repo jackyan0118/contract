@@ -42,52 +42,62 @@ class RowExpander:
             logger.warning("No data to expand")
             return
 
-        # 计算需要添加多少行
-        # 如果 replace_placeholder 为 True，占位行算一条数据行
-        existing_data_rows = len(table.rows) - start_row
+        if not data_list:
+            logger.warning("No data to expand")
+            return
 
-        if replace_placeholder:
-            if has_speech_row:
-                # 保留占位行作为第一条数据 + 话术行在末尾
-                # 需要添加：(数据条数 - 1(占位行复用)) 行
-                # 因为原表格已有话术行，所以只添加数据行-1
-                rows_to_add = max(0, len(data_list) - 1)
-            else:
-                rows_to_add = max(0, len(data_list) - 1 - existing_data_rows)
+        data_count = len(data_list)
+
+        if data_count == 1:
+            # 只有1条数据：清空占位行，填充该数据
+            if start_row < len(table.rows):
+                placeholder_row = table.rows[start_row]
+                for cell in placeholder_row.cells:
+                    cell.text = ""
+                self._fill_row(placeholder_row, data_list[0], columns, 1)
+            logger.info(f"Filled 1 row (replaced placeholder)")
         else:
-            if has_speech_row:
-                rows_to_add = max(0, len(data_list) - (existing_data_rows - 1))
-            else:
-                rows_to_add = max(0, len(data_list) - existing_data_rows)
+            # 大于1条数据：
+            # 1. 首先保存话术行内容（重要！）
+            # 2. 删除所有数据行（保留标题行）
+            # 3. 添加 N+1 行（N条数据 + 1条话术）
+            # 4. 填充数据，跳过最后一行（话术行）
 
-        # 清空占位行内容
-        # 注意：当 replace_placeholder=True 时，直接清空占位行，不需要检查标记
-        if replace_placeholder and start_row < len(table.rows):
-            placeholder_row = table.rows[start_row]
-            for cell in placeholder_row.cells:
-                cell.text = ""
+            # 1. 保存话术行（表格最后一行）
+            speech_row = table.rows[-1] if len(table.rows) > 1 else None
+            speech_row_texts = []
+            if speech_row:
+                for cell in speech_row.cells:
+                    speech_row_texts.append(cell.text)
 
-        # 删除中间行（保留话术行在最后）
-        # 当 has_speech_row=True 时，删除 start_row+1 到倒数第二行之间的所有行
-        if replace_placeholder and has_speech_row and start_row + 1 < len(table.rows) - 1:
-            rows_to_remove = len(table.rows) - start_row - 2
-            for _ in range(rows_to_remove):
-                last_row = table.rows[-2]
-                last_row._element.getparent().remove(last_row._element)
+            # 2. 删除占位行之后的所有行
+            while len(table.rows) > start_row:
+                if len(table.rows) > 1:
+                    last_row = table.rows[-1]
+                    last_row._element.getparent().remove(last_row._element)
+                else:
+                    break
 
-        # 添加新行
-        for _ in range(rows_to_add):
-            table.add_row()
+            # 3. 添加 N+1 行（N条数据 + 1条话术）
+            for i in range(data_count + 1):
+                table.add_row()
 
-        # 填充数据
-        for row_idx, data in enumerate(data_list):
-            table_row_idx = start_row + row_idx
-            if table_row_idx >= len(table.rows):
-                break
-            row = table.rows[table_row_idx]
-            self._fill_row(row, data, columns, row_idx + 1)
+            # 4. 填充数据（从 start_row 开始，填充 N 条）
+            for row_idx, data in enumerate(data_list):
+                table_row_idx = start_row + row_idx
+                if table_row_idx >= len(table.rows) - 1:
+                    break
+                row = table.rows[table_row_idx]
+                self._fill_row(row, data, columns, row_idx + 1)
 
-        logger.info(f"Expanded table with {len(data_list)} rows")
+            # 5. 最后一行是话术行，填充保存的话术内容
+            if speech_row_texts:
+                last_row = table.rows[-1]
+                for cell_idx, text in enumerate(speech_row_texts):
+                    if cell_idx < len(last_row.cells):
+                        last_row.cells[cell_idx].text = text
+
+        logger.info(f"Expanded table with {data_count} rows")
 
     def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1, placeholder_deleted: bool = False) -> None:
         """确保表格有足够的行
@@ -261,3 +271,22 @@ class RowExpander:
             target_run.font.bold = source_run.font.bold
         if source_run.font.italic is not None:
             target_run.font.italic = source_run.font.italic
+
+    def _insert_row_at(self, table: Table, new_row, position: int) -> None:
+        """在指定位置插入行
+
+        Args:
+            table: 表格对象
+            new_row: 新行
+            position: 插入位置索引
+        """
+        # 获取表格的 tbl 元素
+        tbl = table._tbl
+        # 获取 tr 元素
+        new_tr = new_row._tr
+        # 找到插入位置的目标 tr
+        tr_list = tbl.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tr')
+
+        if position < len(tr_list):
+            target_tr = tr_list[position]
+            tbl.insert(list(tbl).index(target_tr), new_tr)

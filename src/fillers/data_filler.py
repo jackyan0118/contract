@@ -35,6 +35,7 @@ class FilterCondition:
     field: str
     operator: str  # =, !=, contains, in, not_in, >, <, >=, <=
     value: Any
+    value_type: Optional[str] = None  # 可选：指定值的类型，如 "bm" 表示BM编码需转换为ID
 
 
 @dataclass
@@ -208,13 +209,58 @@ class DataFiller:
         # 获取字段值（考虑字段映射）
         field_value = self._get_field_value(data, condition.field)
 
+        # 处理值类型转换（如 BM 编码转 ID）
+        converted_value = self._convert_value(condition.value, condition.value_type, data)
+
         # 获取操作符函数
         op_func = self.operators.get(condition.operator)
         if not op_func:
             logger.warning(f"Unknown operator: {condition.operator}")
             return True
 
-        return op_func(field_value, condition.value)
+        return op_func(field_value, converted_value)
+
+    def _convert_value(self, value: Any, value_type: Optional[str], data: Dict[str, Any]) -> Any:
+        """转换值类型
+
+        Args:
+            value: 原始值
+            value_type: 值类型 (如 "bm" 表示BM编码)
+            data: 数据字典（用于获取上下文）
+
+        Returns:
+            转换后的值
+        """
+        if value_type == "bm":
+            # BM编码转ID：从常量或缓存获取映射
+            bm_to_id = self._get_bm_to_id_map()
+            bm_value = str(value).strip()
+            if bm_value in bm_to_id:
+                return bm_to_id[bm_value]
+            logger.warning(f"BM编码 {bm_value} 未找到对应的ID")
+            return value
+
+        return value
+
+    def _get_bm_to_id_map(self) -> Dict[str, int]:
+        """获取BM到ID的映射表
+
+        从数据库查询或使用硬编码的映射
+        """
+        # 硬编码映射（基于数据库查询结果）
+        # CPXF表: ID=139, BM=21, CPXF=通用生化试剂
+        return {
+            "21": 139,   # 通用生化试剂
+            "22": 150,   # 卓越生化试剂
+            "11": 133,   # 酶免试剂
+            "12": 130,   # 化学发光试剂
+            "14": 125,   # 北极星发光试剂
+            "23": 135,   # 日立008试剂
+            "24": 156,   # 北极星生化试剂
+            "31": 132,   # 临床核酸
+            "32": 146,   # 血筛核酸
+            "41": 131,   # 胶体金试剂
+        }
 
     def _get_field_value(
         self,

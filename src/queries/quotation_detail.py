@@ -60,6 +60,10 @@ _DETAIL_COLUMNS = [
     "BNGHJLX",
     "BNGHJLXZ",
     "SFJC",
+    # 产品细分和定价组
+    "CPXF",
+    "DJZ",
+    "DJZMC",
 ]
 
 # 明细查询 SQL 模板
