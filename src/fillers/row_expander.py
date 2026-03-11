@@ -58,41 +58,77 @@ class RowExpander:
             logger.info(f"Filled 1 row (replaced placeholder)")
         else:
             # 大于1条数据：
-            # 1. 首先保存话术行内容（重要！）
-            # 2. 删除所有数据行（保留标题行）
-            # 3. 添加 N+1 行（N条数据 + 1条话术）
-            # 4. 填充数据，跳过最后一行（话术行）
+            # 1. 找到话术行（包含 {{#话术}} 或 {{话术}}），保存为 Tr 元素
+            # 2. 保存话术行内容
+            # 3. 删除从 start_row 开始的所有数据行（保留标题行和话术行）
+            # 4. 在话术行之前插入 N 行数据
+            # 5. 填充数据行
+            # 6. 对话术行进行文本替换
 
-            # 1. 保存话术行（表格最后一行）
-            speech_row = table.rows[-1] if len(table.rows) > 1 else None
+            # 1. 找到话术行（保存 Tr 元素而不是索引）
+            speech_row = None
             speech_row_texts = []
-            if speech_row:
-                for cell in speech_row.cells:
-                    speech_row_texts.append(cell.text)
-
-            # 2. 删除占位行之后的所有行
-            while len(table.rows) > start_row:
-                if len(table.rows) > 1:
-                    last_row = table.rows[-1]
-                    last_row._element.getparent().remove(last_row._element)
-                else:
+            for row in table.rows:
+                row_text = "".join(cell.text for cell in row.cells)
+                if "{{#话术}}" in row_text or "{{话术}}" in row_text:
+                    speech_row = row
+                    speech_row_texts = [cell.text for cell in row.cells]
                     break
 
-            # 3. 添加 N+1 行（N条数据 + 1条话术）
-            for i in range(data_count + 1):
-                table.add_row()
+            # 如果没有找到话术行，使用最后一行
+            if not speech_row and len(table.rows) > 1:
+                speech_row = table.rows[-1]
+                speech_row_texts = [cell.text for cell in speech_row.cells]
 
-            # 4. 填充数据（从 start_row 开始，填充 N 条）
+            if not speech_row:
+                logger.warning("No speech row found")
+                return
+
+            # 保存话术行的 Tr 元素
+            speech_tr = speech_row._tr
+
+            # 2. 删除从 start_row 开始到话术行之前的所有行
+            # 使用 _tr 元素来判断是否是话术行
+            rows_to_remove = []
+            for idx in range(start_row, len(table.rows) - 1):  # 不包括最后一行（话术行）
+                rows_to_remove.append(table.rows[idx]._element)
+
+            # 删除这些行
+            for tr in rows_to_remove:
+                parent = tr.getparent()
+                if parent is not None:
+                    parent.remove(tr)
+
+            # 3. 在话术行之前插入 N 行数据
+            target_cols = len(table.rows[0].cells) if table.rows else 7
+            tbl = table._tbl
+
+            # 获取话术行在表格中的位置
+            tr_list = list(tbl)
+            speech_position = tr_list.index(speech_tr)
+
+            for i in range(data_count):
+                # 创建新行
+                new_row = table.add_row()
+                # 删除多余的单元格，只保留 target_cols 个
+                while len(new_row.cells) > target_cols:
+                    tr = new_row._tr
+                    tc_list = tr.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tc')
+                    if len(tc_list) > target_cols:
+                        tr.remove(tc_list[-1])
+
+                # 在话术行之前插入
+                tbl.insert(speech_position + i, new_row._tr)
+
+            # 4. 填充数据行
             for row_idx, data in enumerate(data_list):
-                table_row_idx = start_row + row_idx
-                if table_row_idx >= len(table.rows) - 1:
-                    break
-                row = table.rows[table_row_idx]
-                self._fill_row(row, data, columns, row_idx + 1)
+                if start_row + row_idx < len(table.rows) - 1:  # 不包括话术行
+                    row = table.rows[start_row + row_idx]
+                    self._fill_row(row, data, columns, row_idx + 1)
 
-            # 5. 最后一行是话术行，填充保存的话术内容
+            # 5. 对话术行进行文本替换（保持原有合并单元格结构）
             if speech_row_texts:
-                last_row = table.rows[-1]
+                last_row = table.rows[-1]  # 话术行现在是最后一行
                 for cell_idx, text in enumerate(speech_row_texts):
                     if cell_idx < len(last_row.cells):
                         last_row.cells[cell_idx].text = text
