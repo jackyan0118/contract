@@ -23,7 +23,9 @@ class RowExpander:
         data_list: List[Dict[str, Any]],
         columns: List[Dict[str, str]],
         start_row: int = 1,
-        template_row_idx: int = -1
+        template_row_idx: int = -1,
+        replace_placeholder: bool = False,
+        has_speech_row: bool = True
     ) -> None:
         """扩展表格行
 
@@ -33,37 +35,54 @@ class RowExpander:
             columns: 列配置列表
             start_row: 起始行索引（从该行开始插入数据）
             template_row_idx: 模板行索引（作为数据行的格式模板）
-            exclude_rows: 需要排除的行索引列表（这些行不会被扩展）
+            replace_placeholder: 是否替换占位行（True=清空占位行作为第一条数据）
+            has_speech_row: 是否有话术行（话术行不参与数据填充，需保留在末尾）
         """
         if not data_list:
             logger.warning("No data to expand")
             return
 
-        # 确保有足够的行
-        self._ensure_rows(table, len(data_list), start_row, template_row_idx)
+        # 计算需要添加多少行
+        # 如果 replace_placeholder 为 True，占位行算一条数据行
+        existing_data_rows = len(table.rows) - start_row
+
+        if replace_placeholder:
+            if has_speech_row:
+                # 保留占位行作为第一条数据 + 话术行在末尾
+                # 需要添加：(数据条数 - 1(占位行复用)) 行
+                # 因为原表格已有话术行，所以只添加数据行-1
+                rows_to_add = max(0, len(data_list) - 1)
+            else:
+                rows_to_add = max(0, len(data_list) - 1 - existing_data_rows)
+        else:
+            if has_speech_row:
+                rows_to_add = max(0, len(data_list) - (existing_data_rows - 1))
+            else:
+                rows_to_add = max(0, len(data_list) - existing_data_rows)
+
+        # 清空占位行内容（如果有）
+        if replace_placeholder and start_row < len(table.rows):
+            placeholder_row = table.rows[start_row]
+            row_text = "".join(cell.text for cell in placeholder_row.cells)
+            if "{{#明细表}}" in row_text or "{{/明细表}}" in row_text or row_text.strip() == "":
+                for cell in placeholder_row.cells:
+                    cell.text = ""
+
+        # 添加新行
+        for _ in range(rows_to_add):
+            table.add_row()
 
         # 填充数据
         for row_idx, data in enumerate(data_list):
             table_row_idx = start_row + row_idx
-
             if table_row_idx >= len(table.rows):
                 break
-
             row = table.rows[table_row_idx]
             self._fill_row(row, data, columns, row_idx + 1)
 
-        # 删除模板行（用于复制格式的行）
-        if template_row_idx >= 0 and template_row_idx < len(table.rows):
-            # 获取模板行
-            template_row = table.rows[template_row_idx]
-            # 检查是否所有单元格都是空的
-            if all(cell.text.strip() == '' for cell in template_row.cells):
-                # 删除空模板行
-                template_row._element.getparent().remove(template_row._element)
-
         logger.info(f"Expanded table with {len(data_list)} rows")
 
-    def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1) -> None:
+    def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1, placeholder_deleted: bool = False) -> None:
         """确保表格有足够的行
 
         Args:
@@ -71,10 +90,11 @@ class RowExpander:
             required_rows: 需要的数据行数
             start_row: 起始行索引
             template_row_idx: 模板行索引（用于复制格式）
+            placeholder_deleted: 占位行是否已被删除
         """
-        # 计算需要的行数
-        current_data_rows = len(table.rows) - start_row
-        rows_to_add = required_rows - current_data_rows
+        # 计算当前从 start_row 开始有多少行
+        current_rows_from_start = max(0, len(table.rows) - start_row)
+        rows_to_add = required_rows - current_rows_from_start
 
         if rows_to_add <= 0:
             # 如果不需要添加新行，清空模板行的内容
@@ -86,8 +106,12 @@ class RowExpander:
         if template_row_idx < 0:
             template_row_idx = start_row
 
+        # 如果模板行索引超出范围，尝试使用最后一个有效行
+        if template_row_idx >= len(table.rows):
+            template_row_idx = len(table.rows) - 1
+
         # 复制模板行
-        if template_row_idx < len(table.rows):
+        if template_row_idx >= 0:
             template_row = table.rows[template_row_idx]
 
             # 首先清空模板行的内容
