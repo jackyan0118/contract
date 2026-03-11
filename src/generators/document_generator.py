@@ -275,23 +275,20 @@ class DocumentGenerator:
 
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
                     # 找到话术行，替换占位符
-                    # Cell 0 保留 "其他"，Cell 1 填充话术，Cell 2-6 清空
-                    for cell_idx, cell in enumerate(row.cells):
-                        text = cell.text
-                        if cell_idx == 0:
-                            # Cell 0 保留 "其他"
-                            text = text.replace("{{#话术}}", "")
-                            text = text.replace("{{/话术}}", "")
-                            text = text.replace("{{话术}}", "")
-                        elif cell_idx == 1:
-                            # Cell 1 填充话术内容
-                            text = text.replace("{{#话术}}", full_speech)
-                            text = text.replace("{{/话术}}", "")
-                            text = text.replace("{{话术}}", full_speech)
-                        else:
-                            # Cell 2-6 清空
-                            text = ""
-                        cell.text = text
+                    # 只修改合并单元格的主单元格（Cell 1）
+                    # Cell 2-6 是虚拟单元格，由于 gridSpan 合并，它们的文本会被忽略
+
+                    # 修改 Cell 1 - 这是合并单元格的主单元格
+                    cell1 = row.cells[1]
+                    # 清空并设置新内容
+                    cell1.text = full_speech
+
+                    # 修改 Cell 0 - 保留 "其他"，移除占位符
+                    cell0 = row.cells[0]
+                    cell0_text = cell0.text.replace("{{#话术}}", "").replace("{{/话术}}", "").replace("{{话术}}", "")
+                    cell0.text = cell0_text if cell0_text else "其他"
+
+                    # Cell 2-6 不需要修改，因为它们是虚拟单元格
 
     def _apply_detail_filter(self,
                             template_config: Optional[TemplateMetadataModel],
