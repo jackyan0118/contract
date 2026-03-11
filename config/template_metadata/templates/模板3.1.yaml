@@ -14,7 +14,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '21'
+      value: '139'
       value_type: bm
     name: CPXF=通用生化试剂
   - conditions:

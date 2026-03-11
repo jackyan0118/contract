@@ -7,7 +7,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '14'
+      value: '125'
       value_type: bm
     name: CPXF=北极星发光试剂
   description: ''
