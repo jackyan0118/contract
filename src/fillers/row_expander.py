@@ -2,9 +2,11 @@
 
 import logging
 from typing import List, Dict, Any
+from copy import deepcopy
 
 from docx import Document
 from docx.table import Table
+from docx.oxml import OxmlElement
 
 from src.fillers.format_preserver import FormatPreserver
 
@@ -38,10 +40,6 @@ class RowExpander:
             replace_placeholder: 是否替换占位行（True=清空占位行作为第一条数据）
             has_speech_row: 是否有话术行（话术行不参与数据填充，需保留在末尾）
         """
-        if not data_list:
-            logger.warning("No data to expand")
-            return
-
         if not data_list:
             logger.warning("No data to expand")
             return
@@ -87,21 +85,42 @@ class RowExpander:
             # 保存话术行的 Tr 元素
             speech_tr = speech_row._tr
 
-            # 2. 删除从 start_row 开始到话术行之前的所有行
-            # 使用 _tr 元素来判断是否是话术行
+            # 获取表格的列宽（从 tblGrid 获取，这是 python-docx 打开文档后的标准宽度）
+            tbl = table._tbl
+            tblGrid = tbl.find('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblGrid')
+            col_widths = []
+            if tblGrid is not None:
+                for col in tblGrid:
+                    width = col.get('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}w')
+                    if width:
+                        col_widths.append(int(width))
+                    else:
+                        col_widths.append(0)
+
+            # 2. 保存模板行的边框格式（不包括 tcW，因为 python-docx 会自动调整 tcW 为 tblGrid 的值）
+            template_row = table.rows[template_row_idx] if template_row_idx >= 0 else table.rows[start_row]
+            template_cell_formats = []
+            for cell in template_row.cells:
+                tc = cell._element
+                tcPr = tc.find('.//{*}tcPr')
+                if tcPr is not None:
+                    # 复制整个 tcPr，但会覆盖 tcW 为 tblGrid 的值
+                    template_cell_formats.append(deepcopy(tcPr))
+                else:
+                    template_cell_formats.append(None)
+
+            # 3. 删除从 start_row 开始到话术行之前的所有行
             rows_to_remove = []
-            for idx in range(start_row, len(table.rows) - 1):  # 不包括最后一行（话术行）
+            for idx in range(start_row, len(table.rows) - 1):
                 rows_to_remove.append(table.rows[idx]._element)
 
-            # 删除这些行
             for tr in rows_to_remove:
                 parent = tr.getparent()
                 if parent is not None:
                     parent.remove(tr)
 
-            # 3. 在话术行之前插入 N 行数据
+            # 4. 在话术行之前插入 N 行数据
             target_cols = len(table.rows[0].cells) if table.rows else 7
-            tbl = table._tbl
 
             # 获取话术行在表格中的位置
             tr_list = list(tbl)
@@ -117,126 +136,58 @@ class RowExpander:
                     if len(tc_list) > target_cols:
                         tr.remove(tc_list[-1])
 
+                # 应用单元格格式
+                for cell_idx in range(len(new_row.cells)):
+                    # 获取列宽（从 tblGrid）
+                    col_width = col_widths[cell_idx] if cell_idx < len(col_widths) else 0
+
+                    # 复制模板行的格式（边框等）
+                    if cell_idx < len(template_cell_formats) and template_cell_formats[cell_idx] is not None:
+                        dst_tc = new_row.cells[cell_idx]._element
+                        dst_tcPr = dst_tc.find('.//{*}tcPr')
+                        if dst_tcPr is None:
+                            dst_tcPr = OxmlElement('w:tcPr')
+                            dst_tc.insert(0, dst_tcPr)
+
+                        # 复制除了 tcW 之外的所有格式
+                        for src_child in template_cell_formats[cell_idx]:
+                            if not src_child.tag.endswith('tcW'):
+                                if dst_tcPr.find(src_child.tag) is None:
+                                    dst_tcPr.append(deepcopy(src_child))
+
+                    # 设置 tcW 为 tblGrid 的列宽
+                    if col_width > 0:
+                        dst_tc = new_row.cells[cell_idx]._element
+                        dst_tcPr = dst_tc.find('.//{*}tcPr')
+                        if dst_tcPr is None:
+                            dst_tcPr = OxmlElement('w:tcPr')
+                            dst_tc.insert(0, dst_tcPr)
+                        # 删除旧的 tcW 并添加新的
+                        existing_tcW = dst_tcPr.find('.//{*}tcW')
+                        if existing_tcW is not None:
+                            dst_tcPr.remove(existing_tcW)
+                        new_tcW = OxmlElement('w:tcW')
+                        new_tcW.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}w', str(col_width))
+                        new_tcW.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type', 'dxa')
+                        dst_tcPr.append(new_tcW)
+
                 # 在话术行之前插入
                 tbl.insert(speech_position + i, new_row._tr)
 
-            # 4. 填充数据行
+            # 5. 填充数据行
             for row_idx, data in enumerate(data_list):
-                if start_row + row_idx < len(table.rows) - 1:  # 不包括话术行
+                if start_row + row_idx < len(table.rows) - 1:
                     row = table.rows[start_row + row_idx]
                     self._fill_row(row, data, columns, row_idx + 1)
 
-            # 5. 对话术行进行文本替换（保持原有合并单元格结构）
+            # 6. 对话术行进行文本替换
             if speech_row_texts:
-                last_row = table.rows[-1]  # 话术行现在是最后一行
+                last_row = table.rows[-1]
                 for cell_idx, text in enumerate(speech_row_texts):
                     if cell_idx < len(last_row.cells):
                         last_row.cells[cell_idx].text = text
 
         logger.info(f"Expanded table with {data_count} rows")
-
-    def _ensure_rows(self, table: Table, required_rows: int, start_row: int, template_row_idx: int = -1, placeholder_deleted: bool = False) -> None:
-        """确保表格有足够的行
-
-        Args:
-            table: 表格对象
-            required_rows: 需要的数据行数
-            start_row: 起始行索引
-            template_row_idx: 模板行索引（用于复制格式）
-            placeholder_deleted: 占位行是否已被删除
-        """
-        # 计算当前从 start_row 开始有多少行
-        current_rows_from_start = max(0, len(table.rows) - start_row)
-        rows_to_add = required_rows - current_rows_from_start
-
-        if rows_to_add <= 0:
-            # 如果不需要添加新行，清空模板行的内容
-            if template_row_idx >= 0 and template_row_idx < len(table.rows):
-                self._clear_template_row(table.rows[template_row_idx])
-            return
-
-        # 确定模板行
-        if template_row_idx < 0:
-            template_row_idx = start_row
-
-        # 如果模板行索引超出范围，尝试使用最后一个有效行
-        if template_row_idx >= len(table.rows):
-            template_row_idx = len(table.rows) - 1
-
-        # 复制模板行
-        if template_row_idx >= 0:
-            template_row = table.rows[template_row_idx]
-
-            # 首先清空模板行的内容
-            self._clear_template_row(template_row)
-
-            for _ in range(rows_to_add):
-                new_row = table.add_row()
-                # 复制格式 - 使用索引遍历
-                for cell_idx in range(len(template_row.cells)):
-                    src_cell = template_row.cells[cell_idx]
-                    dst_cell = new_row.cells[cell_idx]
-
-                    # 复制每个段落（按索引）
-                    src_paras = src_cell.paragraphs
-                    dst_paras = dst_cell.paragraphs
-
-                    if src_paras:
-                        # 源单元格有段落
-                        for para_idx in range(len(src_paras)):
-                            src_para = src_paras[para_idx]
-
-                            # 确保目标单元格有足够的段落
-                            while len(dst_paras) <= para_idx:
-                                dst_cell.add_paragraph()
-                                dst_paras = dst_cell.paragraphs  # 刷新引用
-
-                            dst_para = dst_paras[para_idx]
-
-                            # 复制文本内容（清空）
-                            for dst_run in dst_para.runs:
-                                dst_run.text = ""
-
-                            # 如果没有 Run，添加一个空的
-                            if not dst_para.runs:
-                                dst_para.add_run("")
-
-                            # 复制格式到第一个 Run
-                            if src_para.runs and dst_para.runs:
-                                src_run = src_para.runs[0]
-                                dst_run = dst_para.runs[0]
-                                self._copy_run_format(src_run, dst_run)
-                    else:
-                        # 源单元格没有段落，添加一个空段落
-                        dst_cell.add_paragraph()
-
-            logger.debug(f"Added {rows_to_add} rows to table")
-        else:
-            # 没有模板行，直接添加
-            for _ in range(rows_to_add):
-                table.add_row()
-
-    def _clear_template_row(self, row) -> None:
-        """清空模板行的内容（保留格式），但保留话术行"""
-        for cell in row.cells:
-            for para in cell.paragraphs:
-                text = para.text
-                # 如果这一行包含话术占位符，不清空，只替换占位符
-                if "{{#话术}}" in text or "{{话术}}" in text or "{{/话术}}" in text:
-                    # 替换话术占位符
-                    from src.fillers.constants import DEFAULT_SPEECH_VARIABLES
-                    text = text.replace("{{#话术}}", "").replace("{{/话术}}", "")
-                    for var_name, default_value in DEFAULT_SPEECH_VARIABLES.items():
-                        text = text.replace(f"{{{{{var_name}}}}}", default_value)
-                    # 更新段落文本
-                    if para.runs:
-                        for run in para.runs:
-                            run.text = ""
-                        para.runs[0].text = text
-                else:
-                    # 清空其他行的内容
-                    for run in para.runs:
-                        run.text = ""
 
     def _fill_row(
         self,
@@ -296,33 +247,3 @@ class RowExpander:
                 return value
 
         return value
-
-    def _copy_run_format(self, source_run, target_run) -> None:
-        """复制 Run 格式"""
-        if source_run.font.name:
-            target_run.font.name = source_run.font.name
-        if source_run.font.size:
-            target_run.font.size = source_run.font.size
-        if source_run.font.bold is not None:
-            target_run.font.bold = source_run.font.bold
-        if source_run.font.italic is not None:
-            target_run.font.italic = source_run.font.italic
-
-    def _insert_row_at(self, table: Table, new_row, position: int) -> None:
-        """在指定位置插入行
-
-        Args:
-            table: 表格对象
-            new_row: 新行
-            position: 插入位置索引
-        """
-        # 获取表格的 tbl 元素
-        tbl = table._tbl
-        # 获取 tr 元素
-        new_tr = new_row._tr
-        # 找到插入位置的目标 tr
-        tr_list = tbl.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tr')
-
-        if position < len(tr_list):
-            target_tr = tr_list[position]
-            tbl.insert(list(tbl).index(target_tr), new_tr)
