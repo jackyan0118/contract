@@ -343,9 +343,11 @@ class DocumentGenerator:
         """
         columns = []
         for col in table_config.columns:
+            # auto_number 类型不需要 source_field
+            field = col.source_field if col.type != "auto_number" else ""
             columns.append({
                 "name": col.name,
-                "field": col.source_field,
+                "field": field,
                 "type": col.type,
                 "transform": col.transform,
                 "params": col.params
