@@ -7,7 +7,8 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: 血筛核酸
+      value: '32'
+      value_type: bm
     name: CPXF=血筛核酸
   description: ''
 table:

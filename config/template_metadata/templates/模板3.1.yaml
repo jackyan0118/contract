@@ -14,7 +14,8 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: 通用生化试剂
+      value: '21'
+      value_type: bm
     name: CPXF=通用生化试剂
   - conditions:
     - field: DJZMC

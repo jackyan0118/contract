@@ -7,7 +7,8 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: 卓越生化试剂
+      value: '22'
+      value_type: bm
     name: CPXF=卓越生化试剂
   description: ''
 table:

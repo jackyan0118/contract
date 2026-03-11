@@ -12,8 +12,9 @@ detail_filter:
     - field: CPXF
       operator: in
       value:
-      - 酶免试剂
-      - 胶体金试剂
+      - '11'
+      - '41'
+      value_type: bm
     name: CPXF=酶免试剂
   description: 当产品细分为酶免试剂或胶体金试剂时
 table:
