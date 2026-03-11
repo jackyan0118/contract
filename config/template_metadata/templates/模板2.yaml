@@ -148,12 +148,8 @@ table:
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
   - name: 简称
-    params:
-      length: 10
-      start: 0
-    source_field: WLMS
+    source_field: XMJC
     source_table: UF_HTJGKST_DT1
-    transform: substring
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1

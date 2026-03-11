@@ -66,12 +66,20 @@ _DETAIL_COLUMNS = [
     "DJZMC",
 ]
 
-# 明细查询 SQL 模板
+# 项目简称关联表
+_CPKXMJC_TABLE = "uf_cpkxmjc"
+
+# 包含 XMJC 字段的完整字段列表（用于 _row_to_dict）
+_DETAIL_COLUMNS_WITH_XMJC = _DETAIL_COLUMNS + ["XMJC"]
+
+# 明细查询 SQL 模板（关联项目简称表）
+# XMJC 字段存储的是 UF_CPKXMJC.BH，需要关联查询 UF_CPKXMJC.XMJC
 _QUERY_DETAIL_SQL = f"""
-SELECT {', '.join(_DETAIL_COLUMNS)}
-FROM {{schema}}.{_DETAIL_TABLE}
-WHERE WYBS = :wybs
-ORDER BY LYXH
+SELECT d.{', d.'.join(_DETAIL_COLUMNS)}, x.XMJC as XMJC
+FROM {{schema}}.{_DETAIL_TABLE} d
+LEFT JOIN {{schema}}.{_CPKXMJC_TABLE} x ON d.XMJC = x.BH
+WHERE d.WYBS = :wybs
+ORDER BY d.LYXH
 """
 
 # 计数 SQL 模板
@@ -147,7 +155,7 @@ def get_quotation_details(wybs: str) -> list[dict]:
                 rows = cursor.fetchall()
 
                 # 将行数据转换为字典列表
-                details = [_row_to_dict(row, _DETAIL_COLUMNS) for row in rows]
+                details = [_row_to_dict(row, _DETAIL_COLUMNS_WITH_XMJC) for row in rows]
 
                 logger.info(
                     "报价单明细查询成功",

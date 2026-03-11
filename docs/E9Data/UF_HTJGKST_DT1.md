@@ -57,7 +57,7 @@
 | 42 | CPXF | VARCHAR2(1000) | YES | 浏览按钮 | UF_CPXF | 产品细分 |
 | 43 | PP | VARCHAR2(1000) | YES | 浏览按钮 | UF_PP | 品牌 |
 | 44 | JYTC | VARCHAR2(1000) | YES | 浏览按钮 | UF_JYTC | 检验套餐 |
-| 45 | XMJC | VARCHAR2(1000) | YES | 浏览按钮 | UF_CPKXMJC | 项目简称 |
+| 45 | XMJC | VARCHAR2(1000) | YES | 单行文本 | UF_CPKXMJC(BH) | 项目简称，存储UF_CPKXMJC.BH字段，关联查询XMJC字段 |
 | 46 | JGJCY | NUMBER(38,2) | YES | 单行文本 |  | 价格间差异 |
 | 47 | BNGHJLX | VARCHAR2(1000) | YES | 浏览按钮 | UF_YXZXHTGHJLXBN | 本年供货价类型 |
 | 48 | BNGHJLXZ | NUMBER | YES | 单行文本 |  | 本年供货价类型值 |
