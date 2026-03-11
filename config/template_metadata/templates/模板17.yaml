@@ -1,56 +1,46 @@
-# 血筛核酸产品供货价
-# 模板ID: 模板17
-# 更新日期: 2026-03-10
-
-id: "模板17"
-name: "血筛核酸产品供货价"
-file: "templates/模板17：血筛核酸产品供货价.docx"
-category: "血筛核酸"
-
-# ============================================================
-# Phase 5: 明细表数据筛选规则
-# 从报价单明细中筛选符合条件的数据填充到模板
-# ============================================================
+id: 模板17
+name: 血筛核酸产品供货价
+file: templates/模板17：血筛核酸产品供货价.docx
+category: 血筛核酸
 detail_filter:
-  conditions:
-    - field: "CPXF"
-      operator: "="
-      value: "血筛核酸"
-
-# 表格配置
+  condition_groups:
+  - conditions:
+    - field: CPXF
+      operator: '='
+      value: 血筛核酸
+    name: CPXF=血筛核酸
+  description: ''
 table:
   placeholders:
-    start: "{{#明细表}}"
-    end: "{{/明细表}}"
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
-    - name: "序号"
-      type: "auto_number"
-    - name: "SAP代码"
-      source_field: "WLDM"
-      source_table: "UF_HTJGKST_DT1"
-    - name: "简称"
-      source_field: "XMJC"
-      source_table: "UF_HTJGKST_DT1"
-    - name: "品名"
-      source_field: "WLMS"
-      source_table: "UF_HTJGKST_DT1"
-    - name: "包装规格"
-      source_field: "GG"
-      source_table: "UF_HTJGKST_DT1"
-    - name: "零售价"
-      source_field: "LSJ"
-      source_table: "UF_HTJGKST_DT1"
-      format:
-        type: "currency"
-        decimal_places: 2
-    - name: "供货价"
-      source_field: "GHJY"
-      source_table: "UF_HTJGKST_DT1"
-      format:
-        type: "currency"
-        decimal_places: 2
-
-# 段落占位符
+  - name: 序号
+    type: auto_number
+  - name: SAP代码
+    source_field: WLDM
+    source_table: UF_HTJGKST_DT1
+  - name: 简称
+    source_field: XMJC
+    source_table: UF_HTJGKST_DT1
+  - name: 品名
+    source_field: WLMS
+    source_table: UF_HTJGKST_DT1
+  - name: 包装规格
+    source_field: GG
+    source_table: UF_HTJGKST_DT1
+  - name: 零售价
+    source_field: LSJ
+    source_table: UF_HTJGKST_DT1
+    format:
+      type: currency
+      decimal_places: 2
+  - name: 供货价
+    source_field: GHJY
+    source_table: UF_HTJGKST_DT1
+    format:
+      type: currency
+      decimal_places: 2
 paragraph_placeholders:
   金额单位:
-    value: "元"
+    value: 元

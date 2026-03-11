@@ -1,74 +1,68 @@
-# 模板3.1：通用生化（肾功和心肌酶）产品价格-集采中标价
-# 模板ID: 模板3.1
-# 更新日期: 2026-03-10
-
-id: "模板3.1"
-name: "通用生化（肾功和心肌酶）产品价格-集采中标价"
-file: "templates/模板3.1：通用生化（肾功和心肌酶）产品价格-集采中标价.docx"
-category: "集采产品"
-
-# 匹配条件
+id: 模板3.1
+name: 通用生化（肾功和心肌酶）产品价格-集采中标价
+file: templates/模板3.1：通用生化（肾功和心肌酶）产品价格-集采中标价.docx
+category: 集采产品
 match_conditions:
-  产品细分: "通用生化试剂"
+  产品细分: 通用生化试剂
   定价组:
-    - "通用生化-肾功和心肌酶"
-    - "通用生化-肾功和心肌酶-含校准/质控"
-  是否集采: "是"
-  供货价类型: "集采中标价"
-
-# ============================================================
-# Phase 5: 明细表数据筛选规则
-# 从报价单明细中筛选符合条件的数据填充到模板
-# ============================================================
+  - 通用生化-肾功和心肌酶
+  - 通用生化-肾功和心肌酶-含校准/质控
+  是否集采: 是
+  供货价类型: 集采中标价
 detail_filter:
-  conditions:
-    - field: "CPXF"
-      operator: "="
-      value: "通用生化试剂"
-    - field: "DJZMC"
-      operator: "in"
-      value: ['通用生化-肾功和心肌酶', '通用生化-肾功和心肌酶-含校准/质控', '通用特殊生化-肾功和心肌酶', '通用特殊生化-肾功和心肌酶-含校准/质控']
-    - field: "SFJC"
-      operator: "="
+  condition_groups:
+  - conditions:
+    - field: CPXF
+      operator: '='
+      value: 通用生化试剂
+    name: CPXF=通用生化试剂
+  - conditions:
+    - field: DJZMC
+      operator: in
+      value:
+      - 通用生化-肾功和心肌酶
+      - 通用生化-肾功和心肌酶-含校准/质控
+      - 通用特殊生化-肾功和心肌酶
+      - 通用特殊生化-肾功和心肌酶-含校准/质控
+    name: DJZMC=通用生化-肾功和心肌酶
+  - conditions:
+    - field: SFJC
+      operator: '='
       value: 1
-    - field: "BNGHJLX"
-      operator: "="
-      value: "集采中标价"
-
-# 表格配置
+    name: SFJC=1
+  - conditions:
+    - field: BNGHJLX
+      operator: '='
+      value: 集采中标价
+    name: BNGHJLX=集采中标价
+  description: ''
 table:
   placeholders:
-    start: "{{#明细表}}"
-    end: "{{/明细表}}"
-
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
-    - name: "序号"
-      type: "auto_number"
-
-    - name: "产品名称"
-      source_field: "WLMS"
-      source_table: "UF_HTJGKST_DT1"
-      description: "品名/物料描述"
-
-    - name: "供货价"
-      source_field: "GHJY"
-      source_table: "UF_HTJGKST_DT1"
-      format:
-        type: "currency"
-        decimal_places: 2
-
-# 段落占位符
+  - name: 序号
+    type: auto_number
+  - name: 产品名称
+    source_field: WLMS
+    source_table: UF_HTJGKST_DT1
+    description: 品名/物料描述
+  - name: 供货价
+    source_field: GHJY
+    source_table: UF_HTJGKST_DT1
+    format:
+      type: currency
+      decimal_places: 2
 paragraph_placeholders:
   标题:
-    value: "肾功和心肌酶通用生化产品供货价"
+    value: 肾功和心肌酶通用生化产品供货价
   金额单位:
-    value: "元"
-
-# 话术配置
+    value: 元
 speeches:
-  - id: "话术1"
-    name: "集采通知话术"
-    type: "fixed"
-    position: "after_table"
-    content: |
-      注：前述试剂中标价格，以江西省医疗保障局发布的《关于公布肾功和心肌酶生化类检测试剂省际联盟集中带量采购中选结果的通知》（具体网址为http://ybj.jiangxi.gov.cn/art/2024/3/5/art_28422_4805725.html）附件2：肾功和心肌酶生化类检测试剂省际联盟集中带量采购产品供应清单中所列的中选价为准。
+- id: 话术1
+  name: 集采通知话术
+  type: fixed
+  position: after_table
+  content: '注：前述试剂中标价格，以江西省医疗保障局发布的《关于公布肾功和心肌酶生化类检测试剂省际联盟集中带量采购中选结果的通知》（具体网址为http://ybj.jiangxi.gov.cn/art/2024/3/5/art_28422_4805725.html）附件2：肾功和心肌酶生化类检测试剂省际联盟集中带量采购产品供应清单中所列的中选价为准。
+
+    '

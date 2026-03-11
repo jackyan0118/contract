@@ -1,60 +1,53 @@
-# 日立008（肾功和心肌酶）产品价格-集采经销价
-# 模板ID: 模板9.2
-# 更新日期: 2026-03-10
-
-id: "模板9.2"
-name: "日立008（肾功和心肌酶）产品价格-集采经销价"
-file: "templates/模板9.2：日立008（肾功和心肌酶）产品价格-集采经销价.docx"
-category: "集采产品"
-
-# ============================================================
-# Phase 5: 明细表数据筛选规则
-# 从报价单明细中筛选符合条件的数据填充到模板
-# ============================================================
+id: 模板9.2
+name: 日立008（肾功和心肌酶）产品价格-集采经销价
+file: templates/模板9.2：日立008（肾功和心肌酶）产品价格-集采经销价.docx
+category: 集采产品
 detail_filter:
-  conditions:
-    - field: "CPXF"
-      operator: "="
-      value: "日立008试剂"
-    - field: "DJZMC"
-      operator: "in"
-      value: ['日立008-肾功和心肌酶', '日立008-肾功和心肌酶-含校准质控']
-    - field: "SFJC"
-      operator: "="
+  condition_groups:
+  - conditions:
+    - field: CPXF
+      operator: '='
+      value: 日立008试剂
+    name: CPXF=日立008试剂
+  - conditions:
+    - field: DJZMC
+      operator: in
+      value:
+      - 日立008-肾功和心肌酶
+      - 日立008-肾功和心肌酶-含校准质控
+    name: DJZMC=日立008-肾功和心肌酶
+  - conditions:
+    - field: SFJC
+      operator: '='
       value: 1
-    - field: "BNGHJLX"
-      operator: "="
-      value: "集采经销价"
-
-# 表格配置
+    name: SFJC=1
+  - conditions:
+    - field: BNGHJLX
+      operator: '='
+      value: 集采经销价
+    name: BNGHJLX=集采经销价
+  description: ''
 table:
   placeholders:
-    start: "{{#明细表}}"
-    end: "{{/明细表}}"
-
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
-    - name: "序号"
-      type: "auto_number"
-
-    - name: "产品名称"
-      source_field: "WLMS"
-      source_table: "UF_HTJGKST_DT1"
-
-    - name: "供货价"
-      source_field: "GHJY"
-      source_table: "UF_HTJGKST_DT1"
-      format:
-        type: "currency"
-        decimal_places: 2
-
-# 段落占位符
+  - name: 序号
+    type: auto_number
+  - name: 产品名称
+    source_field: WLMS
+    source_table: UF_HTJGKST_DT1
+  - name: 供货价
+    source_field: GHJY
+    source_table: UF_HTJGKST_DT1
+    format:
+      type: currency
+      decimal_places: 2
 paragraph_placeholders:
   金额单位:
-    value: "元"
-
-# 话术配置 (待完善具体话术内容)
+    value: 元
 speeches:
-  - id: "话术1"
-    type: "fixed"
-    position: "after_table"
-    content: "（待完善）"
+- id: 话术1
+  type: fixed
+  position: after_table
+  content: （待完善）
