@@ -251,8 +251,9 @@ class DocumentGenerator:
                 columns = self._parse_table_columns(table)
 
             # 填充数据 - 从占位行位置开始（替换占位行）
-            # 注意：expand 后需要将话术行移到表格末尾
-            self.row_expander.expand(table, filtered_data, columns, template_row_idx, template_row_idx, True, True)
+            # 根据是否有话术行设置 has_speech_row 参数
+            has_speech_row = speech_row_content is not None
+            self.row_expander.expand(table, filtered_data, columns, template_row_idx, template_row_idx, True, has_speech_row)
 
             # 替换最后一行（话术行）中的占位符
             # 注意：expand 后原始话术行已被数据覆盖，需要使用之前保存的 speech_row_content
