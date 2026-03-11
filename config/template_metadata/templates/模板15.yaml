@@ -35,6 +35,10 @@ table:
       source_field: "WLDM"
       source_table: "UF_HTJGKST_DT1"
 
+    - name: "简称"
+      source_field: "XMJC"
+      source_table: "UF_HTJGKST_DT1"
+
     - name: "类别"
       source_field: "CPXF"
       source_table: "UF_HTJGKST_DT1"

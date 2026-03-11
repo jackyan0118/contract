@@ -52,6 +52,11 @@ table:
       source_table: "UF_HTJGKST_DT1"
       description: "物料代码"
 
+    - name: "简称"
+      source_field: "XMJC"
+      source_table: "UF_HTJGKST_DT1"
+      description: "项目简称"
+
     - name: "品名"
       source_field: "WLMS"
       source_table: "UF_HTJGKST_DT1"
