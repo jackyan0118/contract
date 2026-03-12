@@ -68,16 +68,20 @@ _DETAIL_COLUMNS = [
 
 # 项目简称关联表
 _CPKXMJC_TABLE = "uf_cpkxmjc"
+_CPXF_TABLE = "uf_cpxf"
 
 # 包含 XMJC 字段的完整字段列表（用于 _row_to_dict）
 _DETAIL_COLUMNS_WITH_XMJC = _DETAIL_COLUMNS + ["XMJC"]
+_DETAIL_COLUMNS_WITH_CPXF_NAME = _DETAIL_COLUMNS + ["XMJC", "CPXF_NAME"]
 
-# 明细查询 SQL 模板（关联项目简称表）
+# 明细查询 SQL 模板（关联项目简称表和产品细分表）
 # XMJC 字段存储的是 UF_CPKXMJC.BH，需要关联查询 UF_CPKXMJC.XMJC
+# CPXF 字段存储的是 UF_CPXF.ID，需要关联查询 UF_CPXF.CPXF 获取产品细分名称
 _QUERY_DETAIL_SQL = f"""
-SELECT d.{', d.'.join(_DETAIL_COLUMNS)}, x.XMJC as XMJC
+SELECT d.{', d.'.join(_DETAIL_COLUMNS)}, x.XMJC as XMJC, c.CPXF as CPXF_NAME
 FROM {{schema}}.{_DETAIL_TABLE} d
 LEFT JOIN {{schema}}.{_CPKXMJC_TABLE} x ON d.XMJC = x.BH
+LEFT JOIN {{schema}}.{_CPXF_TABLE} c ON d.CPXF = c.ID
 WHERE d.WYBS = :wybs
 ORDER BY d.LYXH
 """
@@ -155,7 +159,7 @@ def get_quotation_details(wybs: str) -> list[dict]:
                 rows = cursor.fetchall()
 
                 # 将行数据转换为字典列表
-                details = [_row_to_dict(row, _DETAIL_COLUMNS_WITH_XMJC) for row in rows]
+                details = [_row_to_dict(row, _DETAIL_COLUMNS_WITH_CPXF_NAME) for row in rows]
 
                 logger.info(
                     "报价单明细查询成功",
