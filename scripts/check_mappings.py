@@ -42,18 +42,18 @@ def load_db_data():
             except (ValueError, TypeError):
                 pass
 
-    # 定价组: CPZBH(编号) -> CPZ(名称)，排除已删除的记录(SFQ=1)
-    cursor.execute("SELECT ID, CPZBH, CPZ FROM ECOLOGY.UF_CPZWH WHERE CPZBH IS NOT NULL AND CPZ IS NOT NULL AND NVL(SFQ, 0) = 0")
+    # 定价组: DJZBM(编号) -> DJZMC(名称)，从UF_HTDJZPPB表获取
+    cursor.execute("SELECT ID, DJZBM, DJZMC FROM ECOLOGY.UF_HTDJZPPB WHERE DJZBM IS NOT NULL AND DJZMC IS NOT NULL")
     pricing_groups = {}
     pricing_group_id_map = {}  # 编号 -> ID
     for row in cursor.fetchall():
         pg_id, code, name = row
         if code and name:
             try:
-                pricing_groups[int(code)] = name
+                pricing_groups[int(code)] = name.strip()
                 pricing_group_id_map[int(code)] = pg_id
             except (ValueError, TypeError):
-                pricing_groups[str(code)] = name
+                pricing_groups[str(code)] = name.strip()
                 pricing_group_id_map[str(code)] = pg_id
 
     # 供货价类型: 定价组编号(CPZBH) -> [供货价类型名称列表]
@@ -167,8 +167,14 @@ def check_mappings(yaml_data: dict, db_products: dict, db_pricing: dict, db_pric
             ghlx_name = cond.get("供货价类型")
 
             if pg_code and ghlx_name:
+                # 将YAML中的字符串编号转换为int，以便与数据库映射表匹配
+                try:
+                    pg_code_int = int(pg_code)
+                except (ValueError, TypeError):
+                    pg_code_int = pg_code
+
                 # 直接使用名称匹配
-                db_types = db_pricing_types.get(pg_code, set())
+                db_types = db_pricing_types.get(pg_code_int, set())
                 if ghlx_name not in db_types:
                     type_issues.append(
                         f"- 模板 \"{template['id']}\": 定价组 {pg_code} "
