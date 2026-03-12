@@ -85,12 +85,13 @@ def print_detail_info(details: list) -> None:
             print(f"  ... 还有 {len(details) - 5} 条")
 
 
-async def test_single_generation(wybs: str, output_dir: str = "output/test") -> bool:
+async def test_single_generation(wybs: str, output_dir: str = "output/test", template: str = "2") -> bool:
     """测试单个报价单生成
 
     Args:
         wybs: 报价单号
         output_dir: 输出目录
+        template: 模板编号或名称
 
     Returns:
         是否成功
@@ -134,14 +135,13 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test") -> 
         # 这里使用模拟数据进行测试
         print(f"   原始数据字段: {list(quotation.keys())}")
 
-        # 使用完整匹配数据进行测试 (匹配 模板2：通用生化产品价格模版)
-        match_data = {
-            "产品细分编号": "21",
-            "产品细分": "通用生化试剂",
-            "定价组编号": "12",
-            "定价组名称": "通用生化-非集采项目",
-            "是否集采": "1",
-        }
+        # 根据选择的模板构建匹配数据
+        # 模板1：酶免和胶体金
+        # 模板2：通用生化产品价格模版
+        # 其他模板需要根据实际配置添加
+        match_data = get_match_data_by_template(template)
+        print(f"   使用模板: {template}")
+        print(f"   匹配数据: {match_data}")
 
         rule_loader = RuleLoader()
         rules = rule_loader.load()
@@ -295,6 +295,63 @@ async def list_available_wybs(limit: int = 10) -> list:
         return []
 
 
+def get_match_data_by_template(template: str) -> dict:
+    """根据模板编号或名称返回匹配数据
+
+    Args:
+        template: 模板编号或名称，如 "1" 或 "酶免试剂"
+
+    Returns:
+        匹配数据字典
+    """
+    # 模板匹配数据映射
+    template_map = {
+        # 模板1：酶免和胶体金
+        "1": {
+            "产品细分编号": "11",
+            "产品细分": "酶免试剂",
+            "定价组编号": None,
+            "定价组名称": None,
+            "是否集采": "1",
+        },
+        "酶免": {
+            "产品细分编号": "11",
+            "产品细分": "酶免试剂",
+            "定价组编号": None,
+            "定价组名称": None,
+            "是否集采": "1",
+        },
+        # 模板2：通用生化产品价格模版
+        "2": {
+            "产品细分编号": "21",
+            "产品细分": "通用生化试剂",
+            "定价组编号": "12",
+            "定价组名称": "通用生化-非集采项目",
+            "是否集采": "1",
+        },
+        "通用生化": {
+            "产品细分编号": "21",
+            "产品细分": "通用生化试剂",
+            "定价组编号": "12",
+            "定价组名称": "通用生化-非集采项目",
+            "是否集采": "1",
+        },
+    }
+
+    # 尝试精确匹配
+    if template in template_map:
+        return template_map[template]
+
+    # 尝试模糊匹配
+    for key, value in template_map.items():
+        if key in template or template in key:
+            return value
+
+    # 默认返回模板2
+    print(f"⚠️  未找到模板 '{template}'，使用默认模板2")
+    return template_map["2"]
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
@@ -340,6 +397,13 @@ def main():
         help="列出报价单的数量 (默认: 10)"
     )
 
+    parser.add_argument(
+        "--template", "-t",
+        type=str,
+        default="2",
+        help="模板编号或名称 (默认: 2，示例: 1=酶免和胶体金, 2=通用生化试剂)"
+    )
+
     args = parser.parse_args()
 
     # 确保输出目录存在
@@ -362,7 +426,7 @@ def main():
 
     elif args.wybs:
         # 单个生成
-        success = asyncio.run(test_single_generation(args.wybs, args.output))
+        success = asyncio.run(test_single_generation(args.wybs, args.output, args.template))
         sys.exit(0 if success else 1)
 
     elif args.batch:
@@ -393,7 +457,7 @@ def main():
         elif choice == "2":
             wybs = input("请输入报价单号: ").strip()
             if wybs:
-                asyncio.run(test_single_generation(wybs, args.output))
+                asyncio.run(test_single_generation(wybs, args.output, args.template))
 
         elif choice == "3":
             wybs_input = input("请输入报价单号 (用逗号分隔): ").strip()
