@@ -209,33 +209,33 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test", tem
 
             # 检查模板文件是否存在
             template_file = Path("templates") / matched_template.file
-        if not template_file.exists():
-            print(f"⚠️  模板文件不存在: {template_file}")
-            print("   测试通过 - 模板匹配成功!")
-            return True
+            if not template_file.exists():
+                print(f"⚠️  模板文件不存在: {template_file}")
+                print("   跳过此模板")
+                continue
 
-        # 4. 生成文档
-        print("\n4. 生成文档...")
-        generator = DocumentGenerator(
-            template_dir="templates",
-            config_dir="config/template_metadata/templates"
-        )
+            # 4. 生成文档
+            print("   正在生成...")
+            generator = DocumentGenerator(
+                template_dir="templates",
+                config_dir="config/template_metadata/templates"
+            )
 
-        result = generator.generate(
-            template=matched_template,
-            quote_data=quotation,
-            detail_data_list=details,
-            output_dir=output_dir
-        )
+            result = generator.generate(
+                template=matched_template,
+                quote_data=quotation,
+                detail_data_list=details,
+                output_dir=output_dir
+            )
 
-        if result.success:
-            print(f"✅ 文档生成成功!")
-            print(f"   文件路径: {result.file_path}")
-            print(f"   模板ID: {result.template_id}")
-            return True
-        else:
-            print(f"❌ 文档生成失败: {result.error}")
-            return False
+            if result.success:
+                print(f"   ✅ 文档生成成功: {result.file_path}")
+                success_count += 1
+            else:
+                print(f"   ❌ 文档生成失败: {result.error}")
+
+        print(f"\n共成功生成 {success_count}/{len(matched_templates)} 个模板")
+        return success_count > 0
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
