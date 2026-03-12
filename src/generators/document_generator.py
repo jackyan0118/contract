@@ -149,6 +149,9 @@ class DocumentGenerator:
         # 3. 处理话术（完整集成）
         self._process_speeches(doc, template_config, quote_data)
 
+        # 4. 修复表格列宽：将 autofit 改为 fixed，防止 WPS 渲染时列宽随内容变化
+        self._fix_table_layout(doc)
+
     def _fill_paragraphs(self, doc: Document,
                          template_config: Optional[TemplateMetadataModel],
                          data: Dict[str, Any]) -> None:
@@ -418,6 +421,21 @@ class DocumentGenerator:
                 text = text.replace(placeholder, str(value))
 
         return text
+
+    def _fix_table_layout(self, doc: Document) -> None:
+        """修复表格布局：将 autofit 改为 fixed，防止 WPS 渲染时列宽随内容变化
+
+        Args:
+            doc: Word 文档对象
+        """
+        for table in doc.tables:
+            tbl = table._tbl
+            tblPr = tbl.find('.//{*}tblPr')
+            if tblPr is not None:
+                tblLayout = tblPr.find('.//{*}tblLayout')
+                if tblLayout is not None:
+                    # 将 autofit 改为 fixed
+                    tblLayout.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type', 'fixed')
 
     def _process_speeches(self, doc: Document,
                          template_config: Optional[TemplateMetadataModel],
