@@ -25,7 +25,7 @@ table:
     source_field: XMJC
     source_table: UF_HTJGKST_DT1
   - name: 分类
-    source_field: CPXF
+    source_field: CPXF_NAME
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
