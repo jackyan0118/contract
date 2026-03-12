@@ -7,7 +7,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '141'
+      value: '116'
       value_type: bm
     name: CPXF=外购耗材
   description: ''

@@ -9,7 +9,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '157'
+      value: '29'
       value_type: bm
     name: CPXF=质谱试剂
   description: ''

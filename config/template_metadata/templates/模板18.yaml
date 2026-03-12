@@ -7,7 +7,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '129'
+      value: '102'
       value_type: bm
     name: CPXF=第三方试剂
   description: ''

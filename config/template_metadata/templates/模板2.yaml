@@ -4,7 +4,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '139'
+      value: '21'
       value_type: bm
     - field: LYXH
       operator: '='
@@ -13,7 +13,7 @@ detail_filter:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '139'
+      value: '21'
       value_type: bm
     - field: LYXH
       operator: '='

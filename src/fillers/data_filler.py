@@ -2,6 +2,7 @@
 
 import logging
 import re
+import time
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -12,6 +13,8 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from src.fillers.constants import FIELD_MAPPING
+from src.database.connection import get_connection_pool
+from src.database.config import get_database_config
 
 logger = logging.getLogger(__name__)
 
@@ -242,25 +245,64 @@ class DataFiller:
 
         return value
 
+    def __init__(self):
+        self.operators = {
+            "=": self._op_equals,
+            "!=": self._op_not_equals,
+            "contains": self._op_contains,
+            "in": self._op_in,
+            "not_in": self._op_not_in,
+            ">": self._op_greater,
+            "<": self._op_less,
+            ">=": self._op_greater_equal,
+            "<=": self._op_less_equal,
+        }
+        # BM映射表缓存
+        self._bm_to_id_cache: Optional[Dict[str, int]] = None
+        self._bm_to_id_cache_time: float = 0
+        self._bm_to_id_cache_ttl: float = 3600  # 缓存1小时
+
     def _get_bm_to_id_map(self) -> Dict[str, int]:
         """获取BM到ID的映射表
 
-        从数据库查询或使用硬编码的映射
+        从数据库查询，支持缓存机制避免频繁查询
         """
-        # 硬编码映射（基于数据库查询结果）
-        # CPXF表: ID=139, BM=21, CPXF=通用生化试剂
-        return {
-            "21": 139,   # 通用生化试剂
-            "22": 150,   # 卓越生化试剂
-            "11": 133,   # 酶免试剂
-            "12": 130,   # 化学发光试剂
-            "14": 125,   # 北极星发光试剂
-            "23": 135,   # 日立008试剂
-            "24": 156,   # 北极星生化试剂
-            "31": 132,   # 临床核酸
-            "32": 146,   # 血筛核酸
-            "41": 131,   # 胶体金试剂
-        }
+        # 检查缓存是否有效
+        current_time = time.time()
+        if self._bm_to_id_cache is not None:
+            if current_time - self._bm_to_id_cache_time < self._bm_to_id_cache_ttl:
+                return self._bm_to_id_cache
+
+        # 从数据库查询映射
+        try:
+            pool = get_connection_pool()
+            db_config = get_database_config()
+            table_name = db_config.get_qualified_table("UF_CPXF")
+
+            with pool.connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        f"SELECT BM, ID FROM {table_name} WHERE BM IS NOT NULL AND SFQY = 0"
+                    )
+                    rows = cursor.fetchall()
+
+            # 构建映射字典
+            bm_to_id = {}
+            for bm, id_ in rows:
+                if bm is not None and id_ is not None:
+                    bm_to_id[str(bm).strip()] = int(id_)
+
+            # 更新缓存
+            self._bm_to_id_cache = bm_to_id
+            self._bm_to_id_cache_time = current_time
+
+            logger.info(f"从数据库加载了 {len(bm_to_id)} 条BM映射记录")
+            return bm_to_id
+
+        except Exception as e:
+            logger.warning(f"从数据库查询BM映射失败: {e}，使用空映射")
+            # 返回空映射，让调用方处理找不到的情况
+            return {}
 
     def _get_field_value(
         self,
