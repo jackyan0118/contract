@@ -23,10 +23,11 @@ table:
     end: '{{/明细表}}'
   columns:
   - name: 产品类别
-    source_field: CPXF
+    source_field: CPXF_NAME
     source_table: UF_HTJGKST_DT1
     description: 产品细分
   - name: 序号
+    source_field: ''
     type: auto_number
     description: 自动编号
   - name: 物料编码
@@ -53,10 +54,8 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  标题:
-    value: KHB、科华生物品牌酶免&胶体金产品供货价
-  金额单位:
-    value: 元
+  标题: KHB、科华生物品牌酶免&胶体金产品供货价
+  金额单位: 元
 speeches:
 - id: 话术1
   name: 新上市通知

@@ -227,7 +227,7 @@ class DataFiller:
         """转换值类型
 
         Args:
-            value: 原始值
+            value: 原始值（可以是单个值或列表）
             value_type: 值类型 (如 "bm" 表示BM编码)
             data: 数据字典（用于获取上下文）
 
@@ -237,9 +237,24 @@ class DataFiller:
         if value_type == "bm":
             # BM编码转ID：从常量或缓存获取映射
             bm_to_id = self._get_bm_to_id_map()
+
+            # 处理列表值（如 ['11', '41']）
+            if isinstance(value, list):
+                converted_list = []
+                for v in value:
+                    bm_value = str(v).strip()
+                    if bm_value in bm_to_id:
+                        # 转换为字符串，保持与数据库字段类型一致
+                        converted_list.append(str(bm_to_id[bm_value]))
+                    else:
+                        logger.warning(f"BM编码 {bm_value} 未找到对应的ID")
+                        converted_list.append(v)
+                return converted_list
+
+            # 处理单个值
             bm_value = str(value).strip()
             if bm_value in bm_to_id:
-                return bm_to_id[bm_value]
+                return str(bm_to_id[bm_value])
             logger.warning(f"BM编码 {bm_value} 未找到对应的ID")
             return value
 

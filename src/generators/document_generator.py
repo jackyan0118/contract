@@ -305,7 +305,10 @@ class DocumentGenerator:
         Returns:
             过滤后的数据列表
         """
+        logger.info(f"Applying detail filter, template_config: {template_config is not None}, detail_filter: {template_config.detail_filter if template_config else None}")
+
         if not template_config or not template_config.detail_filter:
+            logger.info("No detail filter configured, returning all data")
             return data_list
 
         filter_config = template_config.detail_filter
