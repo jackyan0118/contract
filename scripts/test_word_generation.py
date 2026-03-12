@@ -85,13 +85,13 @@ def print_detail_info(details: list) -> None:
             print(f"  ... 还有 {len(details) - 5} 条")
 
 
-async def test_single_generation(wybs: str, output_dir: str = "output/test", template: str = "2") -> bool:
+async def test_single_generation(wybs: str, output_dir: str = "output/test", templates: list = None) -> bool:
     """测试单个报价单生成
 
     Args:
         wybs: 报价单号
         output_dir: 输出目录
-        template: 模板编号或名称
+        templates: 模板编号或名称列表，如果为None则自动匹配所有适用模板
 
     Returns:
         是否成功
@@ -135,33 +135,80 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test", tem
         # 这里使用模拟数据进行测试
         print(f"   原始数据字段: {list(quotation.keys())}")
 
-        # 根据选择的模板构建匹配数据
-        # 模板1：酶免和胶体金
-        # 模板2：通用生化产品价格模版
-        # 其他模板需要根据实际配置添加
-        match_data = get_match_data_by_template(template)
-        print(f"   使用模板: {template}")
-        print(f"   匹配数据: {match_data}")
-
         rule_loader = RuleLoader()
         rules = rule_loader.load()
-        matcher = TemplateMatcher(rules)
-        match_result = matcher.match(match_data)
 
-        # 获取匹配到的模板
-        if not match_result.success or not match_result.templates:
+        # 如果指定了模板列表，使用指定的模板；否则自动匹配
+        if templates:
+            # 使用指定的模板列表
+            matched_templates = []
+            for t in templates:
+                match_data = get_match_data_by_template(t)
+                matcher = TemplateMatcher(rules)
+                match_result = matcher.match(match_data)
+                if match_result.success and match_result.templates:
+                    matched_templates.append((match_result.templates[0], match_data))
+            print(f"   指定模板: {templates}")
+            print(f"   匹配到 {len(matched_templates)} 个模板")
+        else:
+            # 自动匹配所有适用模板 - 先获取报价单包含的产品细分
+            cpxf_names = set()
+            for d in details:
+                cpxf_name = d.get('CPXF_NAME')
+                if cpxf_name:
+                    cpxf_names.add(cpxf_name)
+            print(f"   报价单包含的产品细分: {cpxf_names}")
+
+            # 遍历所有模板规则，匹配适用的
+            matched_templates = []
+            for rule in rules:
+                conditions = rule.条件 if hasattr(rule, '条件') else []
+                for cond in conditions:
+                    cpxf = cond.产品细分编号 if hasattr(cond, '产品细分编号') else None
+                    if cpxf:
+                        # 检查报价单是否包含该产品细分
+                        for cpxf_name in cpxf_names:
+                            # 简单匹配逻辑：检查模板条件中的产品细分编号
+                            matched = False
+                            for name, code in get_all_cpxf_mapping().items():
+                                if str(cpxf) == str(code) and name == cpxf_name:
+                                    matched = True
+                                    break
+                            if matched:
+                                # 找到匹配的模板
+                                match_data = {
+                                    "产品细分编号": cpxf,
+                                    "产品细分": getattr(cond, '产品细分', ''),
+                                    "定价组编号": getattr(cond, '定价组编号', None),
+                                    "定价组名称": getattr(cond, '定价组名称', None),
+                                    "是否集采": getattr(cond, '是否集采', '1'),
+                                }
+                                matched_templates.append((rule, match_data))
+                                print(f"   ✅ 匹配: {rule.id} ({cpxf_name})")
+                                break
+
+            print(f"   自动匹配到 {len(matched_templates)} 个模板")
+
+        if not matched_templates:
             print("❌ 未匹配到模板")
             return False
 
-        matched_template = match_result.templates[0]
-        print(f"✅ 匹配到模板: {matched_template.id} - {matched_template.name}")
-        print(f"   模板文件: {matched_template.file}")
+        # 生成所有匹配的模板
+        generator = DocumentGenerator(
+            template_dir="templates",
+            config_dir="config/template_metadata/templates"
+        )
 
-        # 将匹配数据合并到报价单数据中，用于话术匹配
-        quotation.update(match_data)
+        success_count = 0
+        for matched_template, match_data in matched_templates:
+            print(f"\n   处理模板: {matched_template.id} - {matched_template.name}")
+            print(f"   匹配数据: {match_data}")
 
-        # 检查模板文件是否存在 (相对于 templates 目录)
-        template_file = Path("templates") / matched_template.file
+            # 将匹配数据合并到报价单数据中，用于话术匹配
+            quotation.update(match_data)
+
+            # 检查模板文件是否存在
+            template_file = Path("templates") / matched_template.file
         if not template_file.exists():
             print(f"⚠️  模板文件不存在: {template_file}")
             print("   测试通过 - 模板匹配成功!")
@@ -352,6 +399,25 @@ def get_match_data_by_template(template: str) -> dict:
     return template_map["2"]
 
 
+def get_all_cpxf_mapping() -> dict:
+    """获取所有产品细分的BM编码映射
+
+    Returns:
+        产品细分名称到BM编码的映射
+    """
+    return {
+        "酶免试剂": "11",
+        "胶体金试剂": "41",
+        "通用生化试剂": "21",
+        "卓越生化试剂": "22",
+        "化学发光试剂": "12",
+        "北极星发光试剂": "14",
+        "日立008试剂": "23",
+        "北极星生化试剂": "24",
+        "第三方试剂": "102",
+    }
+
+
 def main():
     """主函数"""
     parser = argparse.ArgumentParser(
@@ -400,8 +466,14 @@ def main():
     parser.add_argument(
         "--template", "-t",
         type=str,
-        default="2",
-        help="模板编号或名称 (默认: 2，示例: 1=酶免和胶体金, 2=通用生化试剂)"
+        default=None,
+        help="模板编号或名称，支持逗号分隔多个模板 (默认: 自动匹配所有适用模板)"
+    )
+
+    parser.add_argument(
+        "--all", "-a",
+        action="store_true",
+        help="生成所有匹配的模板"
     )
 
     args = parser.parse_args()
@@ -426,7 +498,16 @@ def main():
 
     elif args.wybs:
         # 单个生成
-        success = asyncio.run(test_single_generation(args.wybs, args.output, args.template))
+        # 解析模板参数
+        template_list = None
+        if args.template:
+            # 支持逗号分隔的多个模板
+            template_list = [t.strip() for t in args.template.split(",")]
+        elif args.all:
+            # 自动匹配所有适用模板
+            template_list = None  # None表示自动匹配
+
+        success = asyncio.run(test_single_generation(args.wybs, args.output, template_list))
         sys.exit(0 if success else 1)
 
     elif args.batch:
