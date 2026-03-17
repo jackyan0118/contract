@@ -59,6 +59,8 @@ logs/
 output/
 *.docx
 config/settings.yaml
+deploy/docker/instantclient*/
+deploy/docker/*.zip
 
 # ==================== OS ====================
 .DS_Store

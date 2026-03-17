@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    container_name: contract-app-prod
+    volumes:
+      - contract-output:/app/output
+      - ./config/production.yaml:/app/config/settings.yaml:ro
+      - ./instantclient_21_19:/opt/oracle/instantclient:ro
+    environment:
+      - APP_DEBUG=false
+      - APP_HOST=0.0.0.0
+      - APP_PORT=8000
+      - DATABASE_DSN=${ORACLE_DSN}
+      - DATABASE_MIN_CONNECTIONS=5
+      - DATABASE_MAX_CONNECTIONS=20
+      - DATABASE_CONNECT_TIMEOUT=30
+      - DATABASE_COMMAND_TIMEOUT=60
+      - LOGGING_LEVEL=INFO
+      - TEMPLATE_PATH=/app/templates
+      - TEMPLATE_OUTPUT_DIR=/app/output
+      - DOWNLOADS_STORAGE_DIR=/app/output/downloads
+      - DOWNLOADS_BASE_URL=${DOWNLOADS_BASE_URL}
+      - DOWNLOADS_URL_PATH=/static/downloads
+      - DOWNLOADS_EXPIRES_IN=86400
+      - DOWNLOADS_DISK_SPACE_THRESHOLD=80
+      - SECURITY_API_KEYS=${SECURITY_API_KEYS}
+      - ORACLE_INSTANT_CLIENT=/opt/oracle/instantclient
+    env_file:
+      - .env.production
+    networks:
+      - contract-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  nginx:
+    image: nginx:alpine
+    container_name: contract-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - contract-output:/app/output:ro
+    networks:
+      - contract-network
+    depends_on:
+      - app
+    restart: always
+
+networks:
+  contract-network:
+    driver: bridge
+
+volumes:
+  contract-output:
