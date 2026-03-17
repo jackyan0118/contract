@@ -38,6 +38,8 @@ speeches:
   type: fixed
   position: after_table
   content: （待完善）
+# 折扣话术模板（用于单元格合并时显示折扣信息）
+discount_template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
 # 产品匹配规则：25个标准产品列表
 product_matching:
   products:

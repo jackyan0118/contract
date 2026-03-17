@@ -28,7 +28,8 @@ class RowExpander:
         template_row_idx: int = -1,
         replace_placeholder: bool = False,
         has_speech_row: bool = True,
-        merge_info: dict = None
+        merge_info: dict = None,
+        discount_template: str = None
     ) -> None:
         """扩展表格行
 
@@ -41,9 +42,13 @@ class RowExpander:
             replace_placeholder: 是否替换占位行（True=清空占位行作为第一条数据）
             has_speech_row: 是否有话术行（话术行不参与数据填充，需保留在末尾）
             merge_info: 合并信息字典 {row_idx: (discount, span_count)} 用于垂直合并相同折扣的单元格
+            discount_template: 折扣话术模板字符串，如 "肾功和心肌酶...*【{discount}】%"
         """
         if merge_info is None:
             merge_info = {}
+
+        # 如果未配置 discount_template，则不使用折扣话术功能（不合并单元格显示折扣）
+        # 只有明确配置了 discount_template 的模板才使用折扣话术
 
         if not data_list:
             logger.warning("No data to expand")
@@ -195,12 +200,13 @@ class RowExpander:
                         last_row.cells[cell_idx].text = text
 
             # 7. 按折扣率合并单元格（供货价列）
-            if merge_info:
-                self._merge_vertical_cells_by_discount(table, start_row, merge_info, len(columns))
+            # 只有同时存在 merge_info 和 discount_template 时才执行折扣话术合并
+            if merge_info and discount_template:
+                self._merge_vertical_cells_by_discount(table, start_row, merge_info, len(columns), discount_template)
 
         logger.info(f"Expanded table with {data_count} rows")
 
-    def _merge_vertical_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int) -> None:
+    def _merge_vertical_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int, discount_template: str) -> None:
         """按折扣率垂直合并单元格
 
         使用vMerge来合并单元格：
@@ -212,6 +218,7 @@ class RowExpander:
             start_row: 起始行索引
             merge_info: 合并信息 {row_idx: (discount, span_count)}
             col_count: 列数量
+            discount_template: 折扣话术模板字符串
         """
         if not merge_info or col_count < 3:
             return
@@ -286,7 +293,7 @@ class RowExpander:
 
             # 获取起始行的单元格，设置合并后的文本
             start_cell = table.rows[actual_start_row].cells[price_col_idx]
-            cell_text = f"肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
+            cell_text = discount_template.format(discount=discount)
             start_cell.text = cell_text
 
             # 设置起始行的 vMerge 为 restart
@@ -367,7 +374,7 @@ class RowExpander:
                 if is_merge_start:
                     discount = data.get('_discount')
                     if discount:
-                        value = f"肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
+                        value = discount_template.format(discount=discount)
                     else:
                         value = ""
                 else:
@@ -442,7 +449,7 @@ class RowExpander:
         end_cell = table.rows[end_row].cells[col_idx]
 
         # 设置合并后的文本内容
-        cell_text = f"肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
+        cell_text = discount_template.format(discount=discount)
         start_cell.text = cell_text
 
         # 从第二行开始，将单元格的 vMerge 设置为 'merge'，表示合并到第一个单元格

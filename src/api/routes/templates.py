@@ -7,19 +7,27 @@ from fastapi import APIRouter, Depends, Query
 from src.api.middleware.auth import verify_api_key
 from src.api.schemas import ApiResponse, TemplateInfo, success_response
 from src.config.template_loader import TemplateLoader
+from src.services.rule_loader import RuleLoader
 from src.utils.logger import get_logger
 
 logger = get_logger("api.routes.templates")
 
 router = APIRouter()
 
-# 模板分类列表
-CATEGORIES = [
-    "集采产品",
-    "酶免胶体金",
-    "通用生化",
-    "外购试剂",
-]
+
+def get_categories() -> List[str]:
+    """从配置文件获取分类列表"""
+    # 从 template_rules.yaml 获取产品细分映射的分类
+    try:
+        rule_loader = RuleLoader()
+        rule_loader.load()
+        cpxf_mapping = rule_loader.get_cpxf_mapping()
+        # 产品细分映射的值就是分类
+        categories = list(set(cpxf_mapping.values()))
+        return sorted(categories)
+    except Exception as e:
+        logger.warning(f"Failed to load categories from config: {e}")
+        return []
 
 
 @router.get("/templates", response_model=ApiResponse[List[TemplateInfo]])

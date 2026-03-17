@@ -51,7 +51,8 @@ class DocumentGenerator:
         template: TemplateRule,
         quote_data: Dict[str, Any],
         detail_data_list: List[Dict[str, Any]],
-        output_dir: str = "output"
+        output_dir: str = "output",
+        wybs: str = None
     ) -> GenerationResult:
         """生成文档
 
@@ -60,6 +61,7 @@ class DocumentGenerator:
             quote_data: 报价单主表数据
             detail_data_list: 报价单明细数据列表
             output_dir: 输出目录
+            wybs: 报价单号（用于组织输出目录结构）
 
         Returns:
             GenerationResult: 生成结果
@@ -93,8 +95,11 @@ class DocumentGenerator:
                     error=f"Template file not found: {template.file}"
                 )
 
-            # 复制模板到输出目录
-            output_path = Path(output_dir) / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+            # 复制模板到输出目录（按报价单号组织目录结构）
+            if wybs:
+                output_path = Path(output_dir) / wybs / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+            else:
+                output_path = Path(output_dir) / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(template_path, output_path)
 
@@ -277,7 +282,9 @@ class DocumentGenerator:
             # 调试：检查过滤后的数据
             logger.info(f"filtered_data count: {len(filtered_data)}, grouped_data count: {len(grouped_data)}, columns[0]: {columns[0] if columns else 'empty'}, template_row_idx: {template_row_idx}")
 
-            self.row_expander.expand(table, grouped_data, columns, template_row_idx, template_row_idx, True, has_speech_row, merge_info)
+            # 获取折扣话术模板
+            discount_template = template_config.discount_template if template_config else None
+            self.row_expander.expand(table, grouped_data, columns, template_row_idx, template_row_idx, True, has_speech_row, merge_info, discount_template)
 
             # 获取话术内容
             speech_contents = self._get_speech_contents(template_config, quote_data)

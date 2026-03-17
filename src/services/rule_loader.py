@@ -4,7 +4,7 @@ import yaml
 import logging
 import threading
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileSystemEvent
 
@@ -27,6 +27,7 @@ class RuleLoader:
         self._observer: Optional[Observer] = None
         self._lock = threading.RLock()
         self._backup_rules: List[TemplateRule] = []
+        self._cpxf_mapping: Dict[str, str] = {}  # 产品细分映射
 
     def load(self) -> List[TemplateRule]:
         """加载规则文件
@@ -45,10 +46,18 @@ class RuleLoader:
         except yaml.YAMLError as e:
             raise RuleLoadError(f"Invalid YAML format: {e}")
 
+        # 加载产品细分映射
+        cpxf_data = data.get('产品细分映射', {})
+        self._cpxf_mapping = {str(k): v for k, v in cpxf_data.items()}
+
         rules_data = data.get('模板规则', [])
         self._rules = [TemplateRule(**rule) for rule in rules_data]
-        logger.info(f"Loaded {len(self._rules)} template rules")
+        logger.info(f"Loaded {len(self._rules)} template rules, {len(self._cpxf_mapping)} cpxf mappings")
         return self._rules
+
+    def get_cpxf_mapping(self) -> Dict[str, str]:
+        """获取产品细分映射"""
+        return self._cpxf_mapping.copy()
 
     def reload(self):
         """重新加载规则（带锁保护，失败时回滚）"""

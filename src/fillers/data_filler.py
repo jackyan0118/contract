@@ -12,7 +12,6 @@ from docx import Document
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
-from src.fillers.constants import FIELD_MAPPING
 from src.database.connection import get_connection_pool
 from src.database.config import get_database_config
 
@@ -331,7 +330,7 @@ class DataFiller:
         data: Dict[str, Any],
         field: str
     ) -> Any:
-        """获取字段值（考虑字段映射）"""
+        """获取字段值（大小写不敏感查找）"""
         # 直接查找（区分大小写）
         if field in data:
             return data[field]
@@ -341,23 +340,6 @@ class DataFiller:
         for key in data:
             if key.lower() == field_lower:
                 return data[key]
-
-        # 查找映射字段
-        if field in FIELD_MAPPING:
-            id_field, name_field = FIELD_MAPPING[field]
-            if id_field:
-                # 尝试大写和小写
-                if id_field in data:
-                    return data[id_field]
-                for key in data:
-                    if key.lower() == id_field.lower():
-                        return data[key]
-            if name_field:
-                if name_field in data:
-                    return data[name_field]
-                for key in data:
-                    if key.lower() == name_field.lower():
-                        return data[key]
 
         return None
 

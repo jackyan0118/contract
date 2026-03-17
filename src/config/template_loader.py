@@ -135,6 +135,7 @@ class TemplateMetadataModel(BaseModel):
     paragraph_placeholders: Dict[str, str] = Field(default_factory=dict)
     speeches: List[SpeechModel] = Field(default_factory=list)
     product_matching: Optional[ProductMatchModel] = None
+    discount_template: Optional[str] = None
 
 
 class TemplateLoader:
