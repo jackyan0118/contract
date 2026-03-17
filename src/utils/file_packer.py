@@ -1,6 +1,7 @@
 """文件打包器 - 将生成的文档打包成 ZIP."""
 
 import logging
+import re
 import zipfile
 import os
 from pathlib import Path
@@ -8,6 +9,43 @@ from typing import List, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+# 不安全的文件名模式（目录遍历）
+UNSAFE_PATTERNS = [
+    r'\.\.',  # .. 目录遍历
+    r'^/',    # 绝对路径
+    r'^[a-zA-Z]:\\',  # Windows 绝对路径
+]
+
+
+def validate_filename(filename: str) -> bool:
+    """验证文件名是否安全
+
+    Args:
+        filename: 文件名
+
+    Returns:
+        是否安全
+
+    Raises:
+        ValueError: 文件名不安全
+    """
+    if not filename:
+        raise ValueError("文件名不能为空")
+
+    # 检查是否包含不安全的模式
+    for pattern in UNSAFE_PATTERNS:
+        if re.search(pattern, filename):
+            raise ValueError(f"文件名包含不安全字符: {filename}")
+
+    # 检查是否包含其他危险字符
+    dangerous_chars = ['\0', '\n', '\r']
+    for char in dangerous_chars:
+        if char in filename:
+            raise ValueError(f"文件名包含危险字符: {filename}")
+
+    return True
 
 
 class FilePacker:
@@ -37,6 +75,9 @@ class FilePacker:
         if not output_name:
             output_name = f"报价单_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
+        # 验证输出文件名，防止目录遍历攻击
+        validate_filename(output_name)
+
         output_path = self.output_dir / f"{output_name}.zip"
 
         # 确保输出目录存在
@@ -63,22 +104,22 @@ class FilePacker:
         file_path: str,
         output_name: Optional[str] = None
     ) -> str:
-        """打包单个文件（直接返回或打包）
+        """打包单个文件为ZIP
 
         Args:
             file_path: 文件路径
-            output_name: 输出文件名
+            output_name: 输出文件名（不含扩展名）
 
         Returns:
-            文件路径（如果只有一个文件则原样返回，否则返回 ZIP 路径）
+            ZIP 文件路径
         """
-        path = Path(file_path)
+        if not output_name:
+            # 从原文件名生成输出名
+            original_name = Path(file_path).stem
+            output_name = f"{original_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
-        if not path.exists():
-            raise FileNotFoundError(f"File not found: {file_path}")
-
-        # 如果只需要一个文件，直接返回
-        return str(path)
+        # 调用 pack 方法打包成 ZIP
+        return self.pack([file_path], output_name)
 
     def cleanup(self, file_paths: List[str]) -> None:
         """清理临时文件

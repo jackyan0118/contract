@@ -36,6 +36,8 @@ class ErrorCode(str, Enum):
     DOCUMENT_ERROR = "5000"
     DOCUMENT_GENERATE_ERROR = "5001"
     FILE_WRITE_ERROR = "5002"
+    ZIP_PACK_ERROR = "5003"
+    DISK_SPACE_ERROR = "5004"
 
     # 服务错误 (6000-6999)
     SERVICE_ERROR = "6000"

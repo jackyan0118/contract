@@ -32,3 +32,32 @@ class FileWriteException(DocumentException):
             error_code=ErrorCode.FILE_WRITE_ERROR,
             detail=detail,
         )
+
+
+class ZipPackException(DocumentException):
+    """ZIP打包失败."""
+
+    def __init__(self, reason: str, file_paths: list = None, **kwargs):
+        detail = {"reason": reason, "file_paths": file_paths or [], **kwargs.get("detail", {})}
+        super().__init__(
+            message=f"ZIP打包失败：{reason}",
+            error_code=ErrorCode.ZIP_PACK_ERROR,
+            detail=detail,
+        )
+
+
+class DiskSpaceException(DocumentException):
+    """磁盘空间不足."""
+
+    def __init__(self, required_mb: float, available_mb: float, threshold: int = 80, **kwargs):
+        detail = {
+            "required_mb": required_mb,
+            "available_mb": available_mb,
+            "threshold": threshold,
+            **kwargs.get("detail", {})
+        }
+        super().__init__(
+            message=f"磁盘空间不足：需要 {required_mb:.1f}MB，可用 {available_mb:.1f}MB",
+            error_code=ErrorCode.DISK_SPACE_ERROR,
+            detail=detail,
+        )

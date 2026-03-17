@@ -117,8 +117,10 @@ class TemplateInfo(BaseModel):
 class GenerateSuccessData(BaseModel):
     """单文件生成成功数据"""
 
+    download_url: str
     filename: str
-    file_base64: str
+    file_count: int
+    expires_in: int
     templates_used: List[str] = Field(default_factory=list)
 
 

@@ -212,13 +212,18 @@ class TestGenerateSuccessData:
     def test_generate_success_data(self):
         """测试生成成功数据"""
         data = GenerateSuccessData(
-            filename="报价单_20240301.docx",
-            file_base64="UEsDBBQABgA...",
-            templates_used=["模板1"],
+            download_url="http://localhost:8000/static/downloads/20260317/wybs_123.zip",
+            filename="wybs_123.zip",
+            file_count=2,
+            expires_in=86400,
+            templates_used=["模板6.1", "模板6.2"],
         )
 
-        assert data.filename == "报价单_20240301.docx"
-        assert len(data.templates_used) == 1
+        assert data.download_url == "http://localhost:8000/static/downloads/20260317/wybs_123.zip"
+        assert data.filename == "wybs_123.zip"
+        assert data.file_count == 2
+        assert data.expires_in == 86400
+        assert len(data.templates_used) == 2
 
 
 class TestBatchResultItem:

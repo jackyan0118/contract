@@ -46,12 +46,12 @@ class TestGenerateFlow:
     @patch('src.api.routes.generate.get_transformer')
     @patch('src.api.routes.generate.RuleLoader')
     @patch('src.api.routes.generate.DocumentGenerator')
-    @patch('src.api.routes.generate.read_file_as_base64')
+    @patch('src.api.routes.generate.FilePacker')
     @patch('src.api.routes.generate.get_settings')
     def test_generate_quote_not_found(
         self,
         mock_settings,
-        mock_read_file,
+        mock_file_packer,
         mock_generator,
         mock_rule_loader,
         mock_transformer,

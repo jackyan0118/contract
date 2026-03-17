@@ -1,11 +1,13 @@
 """单文件生成接口."""
 
-import io
+import os
 from dataclasses import asdict
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.dependencies.file import get_output_dir, read_file_as_base64
+from src.api.dependencies.file import get_output_dir
 from src.api.middleware.auth import verify_api_key
 from src.api.schemas import (
     ApiResponse,
@@ -17,6 +19,7 @@ from src.api.schemas import (
 )
 from src.config.settings import get_settings
 from src.exceptions import QueryException
+from src.exceptions.document import DiskSpaceException
 from src.generators.document_generator import DocumentGenerator
 from src.matchers.template_matcher import TemplateMatcher
 from src.models.template_rule import TemplateRule
@@ -24,6 +27,8 @@ from src.queries.quotation import get_quotation_by_wybs
 from src.queries.quotation_detail import get_quotation_details
 from src.services.rule_loader import RuleLoader
 from src.transformers.data_transformer import get_transformer
+from src.utils.file_packer import FilePacker
+from src.utils.file_cleaner import FileCleaner
 from src.utils.logger import get_logger
 
 logger = get_logger("api.routes.generate")
@@ -38,7 +43,7 @@ async def generate_document(
 ) -> ApiResponse[GenerateSuccessData]:
     """单文件生成接口
 
-    根据报价单号生成价格附件文档，返回 Base64 编码的 Word 文件。
+    根据报价单号生成价格附件文档，返回下载 URL 的 ZIP 压缩包。
     """
     wybs = request.wybs
 
@@ -192,20 +197,49 @@ async def generate_document(
                 },
             )
 
-        # 6. 返回第一个文件（如果有多个模板，只返回第一个）
-        # TODO: 如果有多个文件，可以打包成 ZIP
-        first_file = successful_files[0]
-        file_base64 = read_file_as_base64(first_file)
+        # 6. 打包成 ZIP
+        settings = get_settings()
 
-        # 生成文件名
-        import os
-        from datetime import datetime
+        # 使用配置中的下载目录
+        downloads_dir = Path(settings.downloads.storage_dir)
+        downloads_dir.mkdir(parents=True, exist_ok=True)
 
-        filename = os.path.basename(first_file)
+        # 按日期组织子目录
+        date_dir = datetime.now().strftime('%Y%m%d')
+        full_download_dir = downloads_dir / date_dir
+        full_download_dir.mkdir(parents=True, exist_ok=True)
 
+        # 检查磁盘空间
+        cleaner = FileCleaner(storage_dir=str(downloads_dir))
+        if cleaner.is_disk_space_low(threshold=settings.downloads.disk_space_threshold):
+            raise HTTPException(
+                status_code=status.HTTP_507_INSUFFICIENT_STORAGE,
+                detail={
+                    "code": ErrorCode.DISK_SPACE_ERROR,
+                    "message": f"磁盘空间不足，当前已超过 {settings.downloads.disk_space_threshold}%",
+                },
+            )
+
+        # 生成 ZIP 文件名
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        zip_filename = f"{wybs}_{timestamp}"
+        zip_output_dir = str(full_download_dir)
+
+        # 打包文件
+        packer = FilePacker(output_dir=zip_output_dir)
+        zip_path = packer.pack(successful_files, zip_filename)
+
+        # 生成相对路径和完整URL
+        relative_path = f"{date_dir}/{Path(zip_path).name}"
+        download_url = f"{settings.downloads.url_path}/{relative_path}"
+        full_download_url = f"{settings.downloads.base_url}{download_url}"
+
+        # 返回数据
         data = GenerateSuccessData(
-            filename=filename,
-            file_base64=file_base64,
+            download_url=full_download_url,
+            filename=Path(zip_path).name,
+            file_count=len(successful_files),
+            expires_in=settings.downloads.expires_in,
             templates_used=template_ids,
         )
 

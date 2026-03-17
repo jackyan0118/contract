@@ -155,6 +155,25 @@ class RateLimitSettings(BaseSettings):
     whitelist: list[str] = Field(default_factory=list, description="IP白名单")
 
 
+class DownloadsSettings(BaseSettings):
+    """下载服务配置."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="DOWNLOADS_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    url_path: str = Field(default="/static/downloads", description="下载URL路径")
+    storage_dir: str = Field(default="output/downloads", description="下载文件存储目录")
+    base_url: str = Field(default="http://localhost:8000", description="生成URL的Base URL")
+    expires_in: int = Field(default=86400, description="文件过期时间（秒），默认24小时")
+    auto_cleanup: bool = Field(default=True, description="是否自动清理过期文件")
+    cleanup_cron: str = Field(default="0 2 * *", description="定时清理Cron表达式")
+    max_file_size_mb: int = Field(default=100, description="单个文件大小限制（MB）")
+    disk_space_threshold: int = Field(default=80, description="磁盘空间告警阈值（%）")
+
+
 class Settings(BaseSettings):
     """聚合配置."""
 
@@ -167,6 +186,7 @@ class Settings(BaseSettings):
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     template: TemplateSettings = Field(default_factory=TemplateSettings)
+    downloads: DownloadsSettings = Field(default_factory=DownloadsSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
 
