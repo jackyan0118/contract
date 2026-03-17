@@ -1,14 +1,14 @@
 id: 模板24
 name: 外购试剂（日立）生化产品供货价
-file: templates/模板24：外购试剂（日立）生化产品供货价.docx
+file: 模板24：外购试剂（日立）生化产品供货价.docx
 category: 外购试剂
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '103'
-      value_type: bm
+
     name: CPXF=外购试剂
   description: ''
 table:
@@ -52,5 +52,4 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元

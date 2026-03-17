@@ -1,6 +1,6 @@
 id: 模板3.1
 name: 通用生化（肾功和心肌酶）产品价格-集采中标价
-file: templates/模板3.1：通用生化（肾功和心肌酶）产品价格-集采中标价.docx
+file: 模板3.1：通用生化（肾功和心肌酶）产品价格-集采中标价.docx
 category: 集采产品
 match_conditions:
   产品细分: 通用生化试剂
@@ -12,10 +12,10 @@ match_conditions:
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '21'
-      value_type: bm
+
     name: CPXF=通用生化试剂
   - conditions:
     - field: DJZMC
@@ -57,8 +57,7 @@ table:
 paragraph_placeholders:
   标题:
     value: 肾功和心肌酶通用生化产品供货价
-  金额单位:
-    value: 元
+  金额单位: 元
 speeches:
 - id: 话术1
   name: 集采通知话术

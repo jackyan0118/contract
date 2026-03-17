@@ -2,11 +2,14 @@
 
 # 字段映射配置
 # 中文别名 -> (ID字段, 名称字段)
+# 注意：数据库返回的字段是大写（如 CPXF, DJZMC），需要同时支持大小写
 FIELD_MAPPING = {
     "产品细分": ("CPXF", None),
+    "CPXF": ("CPXF", None),  # 产品细分ID
+    "CPXF_BM": ("CPXF_BM", None),  # 产品细分BM编码
     "定价组": ("DJZ", "DJZMC"),
     "定价组名称": ("DJZ", "DJZMC"),
-    "DJZMC": (None, "DJZMC"),  # 话术条件中使用的字段名
+    "DJZMC": ("DJZ", "DJZMC"),  # 话术条件中使用的字段名
     "是否集采": ("SFJC", None),
     "SFJC": ("SFJC", None),  # 话术条件中使用的字段名
     "供货价类型": ("BNGHJLX", "BNGHJLXZ"),

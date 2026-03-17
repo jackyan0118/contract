@@ -1,14 +1,14 @@
 id: 模板8
 name: KHB、科华生物品牌日立008生化产品供货价
-file: templates/模板8：KHB、科华生物品牌日立008生化产品供货价.docx
+file: 模板8：KHB、科华生物品牌日立008生化产品供货价.docx
 category: 日立008
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '23'
-      value_type: bm
+
     name: CPXF=日立008试剂
   description: ''
 table:
@@ -46,5 +46,4 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元

@@ -215,6 +215,13 @@ class DataFiller:
         # 处理值类型转换（如 BM 编码转 ID）
         converted_value = self._convert_value(condition.value, condition.value_type, data)
 
+        # 调试日志
+        logger.debug(
+            f"Matching condition: field={condition.field}, field_value={field_value}, "
+            f"value={condition.value}, value_type={condition.value_type}, "
+            f"converted_value={converted_value}, operator={condition.operator}"
+        )
+
         # 获取操作符函数
         op_func = self.operators.get(condition.operator)
         if not op_func:
@@ -325,17 +332,32 @@ class DataFiller:
         field: str
     ) -> Any:
         """获取字段值（考虑字段映射）"""
-        # 直接查找
+        # 直接查找（区分大小写）
         if field in data:
             return data[field]
+
+        # 尝试小写查找（数据库字段可能是大写）
+        field_lower = field.lower()
+        for key in data:
+            if key.lower() == field_lower:
+                return data[key]
 
         # 查找映射字段
         if field in FIELD_MAPPING:
             id_field, name_field = FIELD_MAPPING[field]
-            if id_field and id_field in data:
-                return data[id_field]
-            if name_field and name_field in data:
-                return data[name_field]
+            if id_field:
+                # 尝试大写和小写
+                if id_field in data:
+                    return data[id_field]
+                for key in data:
+                    if key.lower() == id_field.lower():
+                        return data[key]
+            if name_field:
+                if name_field in data:
+                    return data[name_field]
+                for key in data:
+                    if key.lower() == name_field.lower():
+                        return data[key]
 
         return None
 

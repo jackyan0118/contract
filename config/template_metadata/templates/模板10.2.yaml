@@ -1,14 +1,14 @@
 id: 模板10.2
 name: 日立008（江西糖代谢）产品价格-集采经销价
-file: templates/模板10.2：日立008（江西糖代谢）产品价格-集采经销价.docx
+file: 模板10.2：日立008（江西糖代谢）产品价格-集采经销价.docx
 category: 集采产品
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '23'
-      value_type: bm
+
     name: CPXF=日立008试剂
   - conditions:
     - field: DJZMC
@@ -45,8 +45,7 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元
 speeches:
 - id: 话术1
   type: fixed

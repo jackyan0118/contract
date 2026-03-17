@@ -1,32 +1,17 @@
 id: 模板6.1
 name: 卓越生化（肾功和心肌酶）产品价格-集采中标价
-file: templates/模板6.1：卓越生化（肾功和心肌酶）产品价格-集采中标价.docx
+file: 模板6.1：卓越生化（肾功和心肌酶）产品价格-集采中标价.docx
 category: 集采产品
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF
       operator: '='
-      value: '22'
-      value_type: bm
-    name: CPXF=卓越生化试剂
-  - conditions:
+      value: '150'
     - field: DJZMC
-      operator: in
-      value:
-      - 卓越生化-毫升-肾功和心肌酶
-      - 卓越生化-毫升-肾功和心肌酶-含校准质控
-    name: DJZMC=卓越生化-毫升-肾功和心肌酶
-  - conditions:
-    - field: SFJC
-      operator: '='
-      value: 1
-    name: SFJC=1
-  - conditions:
-    - field: BNGHJLX
-      operator: '='
-      value: 集采中标价
-    name: BNGHJLX=集采中标价
+      operator: contains
+      value: 肾功和心肌酶
+    name: 卓越生化肾功心肌酶
   description: ''
 table:
   placeholders:
@@ -35,6 +20,7 @@ table:
   columns:
   - name: 序号
     type: auto_number
+    source_field: ''
   - name: 产品名称
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
@@ -45,10 +31,63 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  标题: 卓越生化（肾功和心肌酶）产品价格-集采中标价
+  金额单位: 元
 speeches:
 - id: 话术1
   type: fixed
   position: after_table
   content: （待完善）
+# 产品匹配规则：25个标准产品列表
+product_matching:
+  products:
+    - name: β2-微球蛋白测定试剂盒(胶乳增强免疫比浊法)
+      seq: 1
+    - name: β2-微球蛋白测定试剂盒（粒子增强免疫比浊法）
+      seq: 2
+    - name: 肌酐检测试剂盒（肌氨酸氧化酶法）
+      seq: 3
+    - name: 肌酐测定试剂盒(肌氨酸氧化酶法)
+      seq: 4
+    - name: 肌酸激酶（CK）测定试剂盒（N-乙酰半胱氨酸法）
+      seq: 5
+    - name: 肌酸激酶MB型同工酶（CK-MB）测定试剂盒（免疫抑制法）
+      seq: 6
+    - name: 视黄醇结合蛋白测定试剂盒 (胶乳增强免疫比浊法)
+      seq: 7
+    - name: 同型半胱氨酸（HCY）测定试剂盒（液体）（循环酶法）
+      seq: 8
+    - name: 同型半胱氨酸测定试剂盒（酶循环法）
+      seq: 9
+    - name: 胱抑素C测定试剂盒(免疫比浊法)
+      seq: 10
+    - name: 肌红蛋白测定试剂盒（胶乳增强免疫比浊法）
+      seq: 11
+    - name: 中性粒细胞明胶酶相关脂质运载蛋白测定试剂盒(粒子增强免疫比浊法)
+      seq: 12
+    - name: 尿素测定试剂盒(液体)(紫外-谷氨酸脱氢酶法)
+      seq: 13
+    - name: 尿酸测定试剂盒(液体)(氧化酶法)
+      seq: 14
+    - name: α1-微球蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 15
+    - name: α-羟丁酸脱氢酶测定试剂盒（DGKC法）
+      seq: 16
+    - name: 二氧化碳测定试剂盒(酶法)
+      seq: 17
+    - name: 尿微量白蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 18
+    - name: 尿微量白蛋白测定试剂盒(免疫比浊法)
+      seq: 19
+    - name: N-乙酰-β-D-氨基葡萄糖苷酶测定试剂盒(速率法)
+      seq: 20
+    - name: 尿免疫球蛋白G测定试剂盒（免疫比浊法）
+      seq: 21
+    - name: 缺血修饰白蛋白测定试剂盒（白蛋白-钴结合法）
+      seq: 22
+    - name: 心型脂肪酸结合蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 23
+    - name: 血管紧张素转换酶测定试剂盒(速率法)
+      seq: 24
+    - name: 脂蛋白相关磷脂酶A2测定试剂盒（胶乳免疫比浊法）
+      seq: 25

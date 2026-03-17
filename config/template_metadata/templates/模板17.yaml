@@ -1,14 +1,14 @@
 id: 模板17
 name: 血筛核酸产品供货价
-file: templates/模板17：血筛核酸产品供货价.docx
+file: 模板17：血筛核酸产品供货价.docx
 category: 血筛核酸
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '32'
-      value_type: bm
+
     name: CPXF=血筛核酸
   description: ''
 table:
@@ -43,5 +43,4 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元

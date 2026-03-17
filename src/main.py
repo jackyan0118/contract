@@ -1,6 +1,7 @@
 """FastAPI 应用入口."""
 
 import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
@@ -11,9 +12,23 @@ from src.api.middleware.rate_limit import setup_rate_limit
 from src.api.router import api_router
 from src.api.schemas import ApiResponse, ErrorCode
 from src.config.settings import get_settings
+from src.database.connection import get_connection_pool
 from src.utils.logger import get_logger
 
 logger = get_logger("main")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理."""
+    # 启动时初始化数据库连接池
+    logger.info("正在初始化数据库连接池...")
+    pool = get_connection_pool()
+    pool.initialize()
+    logger.info("数据库连接池初始化完成")
+    yield
+    # 关闭时清理资源
+    logger.info("正在关闭应用...")
 
 
 def create_app() -> FastAPI:
@@ -26,6 +41,7 @@ def create_app() -> FastAPI:
         version=settings.app.version,
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     # 配置中间件

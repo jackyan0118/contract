@@ -22,7 +22,7 @@ CATEGORIES = [
 ]
 
 
-@router.get("/api/v1/templates", response_model=ApiResponse[List[TemplateInfo]])
+@router.get("/templates", response_model=ApiResponse[List[TemplateInfo]])
 async def list_templates(
     category: Optional[str] = Query(None, description="分类筛选"),
     user: str = Depends(verify_api_key),

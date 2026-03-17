@@ -69,7 +69,7 @@ class TableColumnModel(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     name: str
-    source_field: str
+    source_field: Optional[str] = None  # auto_number 类型时可以为 None
     source_table: str = "UF_HTJGKST_DT1"
     type: ColumnType = ColumnType.TEXT
     transform: Optional[str] = None
@@ -110,6 +110,17 @@ class SpeechModel(BaseModel):
     variables: List[SpeechVariableModel] = Field(default_factory=list)
 
 
+class ProductMatchItem(BaseModel):
+    """产品匹配项"""
+    name: str
+    seq: int = 0
+
+
+class ProductMatchModel(BaseModel):
+    """产品匹配模型"""
+    products: List[ProductMatchItem] = Field(default_factory=list)
+
+
 class TemplateMetadataModel(BaseModel):
     """模板元数据模型"""
     model_config = ConfigDict(populate_by_name=True)
@@ -123,6 +134,7 @@ class TemplateMetadataModel(BaseModel):
     table: Optional[TableModel] = None
     paragraph_placeholders: Dict[str, str] = Field(default_factory=dict)
     speeches: List[SpeechModel] = Field(default_factory=list)
+    product_matching: Optional[ProductMatchModel] = None
 
 
 class TemplateLoader:

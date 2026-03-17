@@ -1,14 +1,14 @@
 id: 模板6.2
 name: 卓越生化（肾功和心肌酶）产品价格-集采经销价
-file: templates/模板6.2：卓越生化（肾功和心肌酶）产品价格-集采经销价.docx
+file: 模板6.2：卓越生化（肾功和心肌酶）产品价格-集采经销价.docx
 category: 集采产品
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '22'
-      value_type: bm
+
     name: CPXF=卓越生化试剂
   - conditions:
     - field: DJZMC
@@ -45,8 +45,7 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元
 speeches:
 - id: 话术1
   type: fixed

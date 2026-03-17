@@ -46,6 +46,8 @@ from src.queries.quotation_detail import get_quotation_details
 from src.matchers.template_matcher import TemplateMatcher
 from src.generators.document_generator import DocumentGenerator
 from src.services.rule_loader import RuleLoader
+from src.config.template_loader import TemplateLoader
+from src.models.template_rule import TemplateRule
 from src.utils.logger import get_logger
 
 logger = get_logger("test_generation")
@@ -140,14 +142,26 @@ async def test_single_generation(wybs: str, output_dir: str = "output/test", tem
 
         # 如果指定了模板列表，使用指定的模板；否则自动匹配
         if templates:
-            # 使用指定的模板列表
+            # 使用指定的模板列表 - 直接从YAML加载
             matched_templates = []
+            template_loader = TemplateLoader("config/template_metadata/templates")
             for t in templates:
-                match_data = get_match_data_by_template(t)
-                matcher = TemplateMatcher(rules)
-                match_result = matcher.match(match_data)
-                if match_result.success and match_result.templates:
-                    matched_templates.append((match_result.templates[0], match_data))
+                try:
+                    # 尝试加载模板配置
+                    template_config = template_loader.load(t)
+                    match_data = get_match_data_by_template(t)
+
+                    # 创建TemplateRule对象
+                    template_rule = TemplateRule(
+                        id=template_config.id,
+                        name=template_config.name,
+                        file=template_config.file,
+                        category=template_config.category
+                    )
+                    matched_templates.append((template_rule, match_data))
+                    print(f"   ✅ 加载模板: {template_config.id}")
+                except FileNotFoundError:
+                    print(f"   ⚠️ 模板文件不存在: {t}")
             print(f"   指定模板: {templates}")
             print(f"   匹配到 {len(matched_templates)} 个模板")
         else:
@@ -382,6 +396,21 @@ def get_match_data_by_template(template: str) -> dict:
             "定价组编号": "12",
             "定价组名称": "通用生化-非集采项目",
             "是否集采": "1",
+        },
+        # 模板6.1：卓越生化（肾功和心肌酶）产品价格-集采中标价
+        "6.1": {
+            "产品细分编号": "22",
+            "产品细分": "卓越生化试剂",
+            "定价组编号": None,
+            "定价组名称": "卓越生化-肾功和心肌酶",
+            "是否集采": "0",
+        },
+        "模板6.1": {
+            "产品细分编号": "22",
+            "产品细分": "卓越生化试剂",
+            "定价组编号": None,
+            "定价组名称": "卓越生化-肾功和心肌酶",
+            "是否集采": "0",
         },
     }
 

@@ -35,7 +35,7 @@ class GenerationResult:
 class DocumentGenerator:
     """文档生成器"""
 
-    def __init__(self, template_dir: str = "docs/template",
+    def __init__(self, template_dir: str = "templates",
                  config_dir: str = "config/template_metadata/templates"):
         self.template_dir = Path(template_dir)
         self.config_dir = Path(config_dir)
@@ -241,11 +241,28 @@ class DocumentGenerator:
                             cell_text += para.text
                         speech_row_content.append(cell_text)
 
+            # 如果没有找到 {{#明细表}} 占位符，但模板配置了 table.columns，则也视为明细表
+            if not is_detail_table and template_config and template_config.table and template_config.table.columns:
+                is_detail_table = True
+                # 假设第一行是表头，最后一行是话术行或空行
+                template_row_idx = 1  # 从第1行开始填充数据
+                has_speech_row = speech_row_content is not None
+
             if not is_detail_table:
                 continue
 
             # 应用 detail_filter 过滤数据
             filtered_data = self._apply_detail_filter(template_config, data_list)
+
+            # 应用产品匹配去重（product_matching）
+            filtered_data = self._apply_product_matching(template_config, filtered_data)
+
+            # 只有当模板配置了 product_matching 时才计算折扣分组（用于模板6.1等需要合并单元格的模板）
+            if template_config and template_config.product_matching:
+                grouped_data, merge_info = self._calculate_discount_and_group(filtered_data)
+            else:
+                grouped_data = filtered_data
+                merge_info = {}
 
             # 解析列配置（优先使用模板配置）
             if template_config and template_config.table:
@@ -258,9 +275,9 @@ class DocumentGenerator:
             has_speech_row = speech_row_content is not None
 
             # 调试：检查过滤后的数据
-            logger.info(f"filtered_data count: {len(filtered_data)}, columns[0]: {columns[0] if columns else 'empty'}")
+            logger.info(f"filtered_data count: {len(filtered_data)}, grouped_data count: {len(grouped_data)}, columns[0]: {columns[0] if columns else 'empty'}, template_row_idx: {template_row_idx}")
 
-            self.row_expander.expand(table, filtered_data, columns, template_row_idx, template_row_idx, True, has_speech_row)
+            self.row_expander.expand(table, grouped_data, columns, template_row_idx, template_row_idx, True, has_speech_row, merge_info)
 
             # 获取话术内容
             speech_contents = self._get_speech_contents(template_config, quote_data)
@@ -292,6 +309,135 @@ class DocumentGenerator:
                     cell0.text = cell0_text if cell0_text else "其他"
 
                     # Cell 2-6 不需要修改，因为它们是虚拟单元格
+
+    def _apply_product_matching(self,
+                                template_config: Optional[TemplateMetadataModel],
+                                data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """应用产品匹配规则进行去重
+
+        使用product_matching配置的标准产品列表进行匹配：
+        - 匹配成功：显示标准产品名称
+        - 匹配失败：显示原品名作为"其他"
+
+        Args:
+            template_config: 模板配置
+            data_list: 过滤后的数据列表
+
+        Returns:
+            去重后的数据列表
+        """
+        if not template_config or not template_config.product_matching:
+            return data_list
+
+        if not data_list:
+            return data_list
+
+        product_matching = template_config.product_matching
+
+        # 构建标准产品名称到序号的映射
+        product_map = {}
+        for p in product_matching.products:
+            product_map[p.name] = p.seq
+
+        # 按标准产品列表去重
+        seen_standard = set()
+        result = []
+
+        # 先按标准产品匹配
+        for wlms in product_map.keys():
+            # 查找匹配的品名
+            for item in data_list:
+                item_wlms = item.get('WLMS', '')
+                if item_wlms == wlms:
+                    # 添加标准产品
+                    result.append({
+                        **item,
+                        '_matched_product': wlms,
+                        '_seq': product_map[wlms]
+                    })
+                    seen_standard.add(wlms)
+                    break
+
+        # 添加未匹配的产品作为"其他"
+        unmatched = []
+        for item in data_list:
+            item_wlms = item.get('WLMS', '')
+            if item_wlms not in seen_standard:
+                unmatched.append({
+                    **item,
+                    '_matched_product': item_wlms,  # 保留原品名
+                    '_seq': 999  # 未匹配的放最后
+                })
+
+        # 按序号排序
+        result.extend(unmatched)
+        result.sort(key=lambda x: x.get('_seq', 999))
+
+        logger.info(f"Product matching: {len(data_list)} -> {len(result)} items")
+
+        return result
+
+    def _calculate_discount_and_group(self, data_list: List[Dict[str, Any]]) -> tuple:
+        """计算折扣率并按折扣分组
+
+        用于模板6.1等需要按折扣合并单元格的模板
+
+        Args:
+            data_list: 过滤后的数据列表
+
+        Returns:
+            (分组后的数据列表, 合并信息字典)
+            - 分组后的数据：按折扣率排序，相同折扣的数据放在一起
+            - 合并信息：{row_idx: (discount, span_count)} 表示该行需要合并多少行
+        """
+        if not data_list:
+            return data_list, {}
+
+        # 为每条数据计算折扣率
+        for item in data_list:
+            jcjxj = item.get('JCJXJ')
+            jczbj = item.get('JCZBJ')
+            if jcjxj and jczbj and float(jczbj) > 0:
+                discount = round(float(jcjxj) / float(jczbj) * 100)
+                item['_discount'] = discount
+            else:
+                item['_discount'] = None
+
+        # 按折扣率排序（None放在最后）
+        sorted_data = sorted(data_list, key=lambda x: (x['_discount'] is None, x['_discount'] or 0))
+
+        # 计算合并信息，并添加组内序号
+        merge_info = {}
+        current_discount = None
+        span_count = 0
+        start_idx = 0
+        group_index = 0  # 组内序号
+
+        for idx, item in enumerate(sorted_data):
+            discount = item.get('_discount')
+            if discount != current_discount:
+                # 保存之前的合并信息
+                if current_discount is not None and span_count > 1:
+                    merge_info[start_idx] = (current_discount, span_count)
+                # 开始新的分组
+                current_discount = discount
+                span_count = 1
+                start_idx = idx
+                group_index = 1  # 重置组内序号
+            else:
+                span_count += 1
+                group_index += 1
+
+            # 设置组内序号
+            item['_group_index'] = group_index
+
+        # 保存最后一组的合并信息
+        if current_discount is not None and span_count > 1:
+            merge_info[start_idx] = (current_discount, span_count)
+
+        logger.info(f"Discount grouping: {len(sorted_data)} items, {len(merge_info)} merge groups")
+
+        return sorted_data, merge_info
 
     def _apply_detail_filter(self,
                             template_config: Optional[TemplateMetadataModel],
@@ -571,7 +717,7 @@ class DocumentGenerator:
 class MultiDocumentGenerator:
     """多文档生成器 - 生成多个文档并打包"""
 
-    def __init__(self, template_dir: str = "docs/template"):
+    def __init__(self, template_dir: str = "templates"):
         self.generator = DocumentGenerator(template_dir)
 
     def generate_batch(

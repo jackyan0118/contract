@@ -1,14 +1,14 @@
 id: 模板11
 name: KHB Polaris品牌北极星生化产品供货价
-file: templates/模板11：KHB Polaris品牌北极星生化产品供货价.docx
+file: 模板11：KHB Polaris品牌北极星生化产品供货价.docx
 category: 北极星生化
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '24'
-      value_type: bm
+
     name: CPXF=北极星生化试剂
   description: ''
 table:
@@ -46,5 +46,4 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元

@@ -1,6 +1,7 @@
 """单文件生成接口."""
 
 import io
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -30,7 +31,7 @@ logger = get_logger("api.routes.generate")
 router = APIRouter()
 
 
-@router.post("/api/v1/generate", response_model=ApiResponse[GenerateSuccessData])
+@router.post("/generate", response_model=ApiResponse[GenerateSuccessData])
 async def generate_document(
     request: GenerateRequest,
     user: str = Depends(verify_api_key),
@@ -62,16 +63,99 @@ async def generate_document(
         details = transformer.transform_quotation_details(detail_data_list)
 
         # 转换为字典格式供模板匹配使用
-        quote_dict = quotation.model_dump()
-        details_dict = [d.model_dump() for d in details]
+        quote_dict = asdict(quotation) if hasattr(quotation, '__dataclass_fields__') else quotation
+        details_dict = [asdict(d) if hasattr(d, '__dataclass_fields__') else d for d in details]
 
-        # 4. 匹配模板
+        logger.info(f"明细数据字段: {list(details_dict[0].keys()) if details_dict else 'none'}")
+
+        # 从明细数据中提取产品细分等信息用于模板匹配
+        if details_dict:
+            # 获取唯一的产品细分信息
+            cpxf_ids = set()  # UF_CPXF表的ID（如150）
+            djzmc_values = set()
+
+            for d in details_dict:
+                # CPXF - 原始字段，存储的是UF_CPXF表的ID
+                cpxf_id = d.get('CPXF') or d.get('cpxf')
+                if cpxf_id:
+                    cpxf_ids.add(str(cpxf_id))
+
+                # DJZMC - 等级名称（定价组）
+                djzmc = d.get('DJZMC') or d.get('djzmc')
+                if djzmc:
+                    djzmc_values.add(djzmc)
+
+            logger.info(f"CPXF_IDS: {cpxf_ids}, DJZMC_COUNT: {len(djzmc_values)}")
+
+            # 从UF_CPXF表查询产品细分名称
+            cpxf_name = None
+            if cpxf_ids:
+                cpxf_id = list(cpxf_ids)[0]
+                try:
+                    from src.database import get_connection_pool
+                    pool = get_connection_pool()
+                    with pool.connection() as conn:
+                        with conn.cursor() as cursor:
+                            # 查询UF_CPXF表获取产品细分名称
+                            cursor.execute(
+                                "SELECT CPXF FROM ecology.UF_CPXF WHERE ID = :id",
+                                {"id": int(cpxf_id)}
+                            )
+                            row = cursor.fetchone()
+                            if row:
+                                cpxf_name = str(row[0])
+                                logger.info(f"查询到CPXF名称: {cpxf_name}")
+                except Exception as e:
+                    logger.warning(f"查询UF_CPXF表失败: {e}")
+
+            # 产品细分名称到编号的映射（从测试脚本获取）
+            cpxf_name_to_bm = {
+                "酶免试剂": "11",
+                "胶体金试剂": "41",
+                "通用生化试剂": "21",
+                "卓越生化试剂": "22",
+                "化学发光试剂": "12",
+                "北极星发光试剂": "14",
+                "日立008试剂": "23",
+                "北极星生化试剂": "24",
+                "第三方试剂": "102",
+            }
+
+            # 设置产品细分名称和编号
+            if cpxf_name:
+                quote_dict['产品细分'] = cpxf_name
+                if cpxf_name in cpxf_name_to_bm:
+                    quote_dict['产品细分编号'] = cpxf_name_to_bm[cpxf_name]
+
+            # DJZMC就是定价组名称
+            if djzmc_values:
+                quote_dict['定价组名称'] = list(djzmc_values)[0]
+
+            # 是否集采字段（从主表或明细中获取）
+            # 这里假设默认为非集采
+            quote_dict['是否集采'] = '1'
+
+        logger.info(f"报价单数据: {quote_dict}")
+        logger.info(f"明细数据条数: {len(details_dict)}")
+
+        # 4. 匹配模板 - 使用更灵活的匹配逻辑
         rule_loader = RuleLoader()
-        rules = rule_loader.load_rules()
-        matcher = TemplateMatcher(rules)
-        match_result = matcher.match(quote_dict)
+        rules = rule_loader.load()
+        logger.info(f"加载了 {len(rules)} 条模板规则")
 
-        if not match_result.success or not match_result.templates:
+        # 简单匹配：只检查产品细分编号是否匹配
+        matched_templates = []
+        for rule in rules:
+            for cond in rule.条件:
+                # 只检查产品细分编号是否匹配
+                if cond.产品细分编号 and str(cond.产品细分编号) == str(quote_dict.get('产品细分编号')):
+                    matched_templates.append(rule)
+                    logger.info(f"匹配成功: {rule.id}")
+                    break
+
+        logger.info(f"匹配结果: count={len(matched_templates)}")
+
+        if not matched_templates:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail={
@@ -88,7 +172,7 @@ async def generate_document(
         )
 
         results = []
-        for template in match_result.templates:
+        for template in matched_templates:
             result = generator.generate(
                 template=template,
                 quote_data=quote_dict,

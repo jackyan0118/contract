@@ -17,7 +17,7 @@ logger = get_logger("api.routes.tasks")
 router = APIRouter()
 
 
-@router.get("/api/v1/tasks/{task_id}", response_model=ApiResponse[AsyncTaskData])
+@router.get("/tasks/{task_id}", response_model=ApiResponse[AsyncTaskData])
 async def get_task_status(
     task_id: str,
     user: str = Depends(verify_api_key),
@@ -73,7 +73,7 @@ async def get_task_status(
     return success_response(data=data.model_dump())
 
 
-@router.delete("/api/v1/tasks/{task_id}", response_model=ApiResponse)
+@router.delete("/tasks/{task_id}", response_model=ApiResponse)
 async def cancel_task(
     task_id: str,
     user: str = Depends(verify_api_key),

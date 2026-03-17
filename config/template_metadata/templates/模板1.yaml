@@ -1,6 +1,6 @@
 id: 模板1
 name: KHB、科华生物品牌酶免&胶体金产品供货价
-file: templates/模板1：KHB、科华生物品牌酶免&胶体金产品供货价.docx
+file: 模板1：KHB、科华生物品牌酶免&胶体金产品供货价.docx
 category: 酶免胶体金
 match_conditions:
   产品细分:
@@ -9,12 +9,12 @@ match_conditions:
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: in
       value:
       - '11'
       - '41'
-      value_type: bm
+
     name: CPXF=酶免试剂
   description: 当产品细分为酶免试剂或胶体金试剂时
 table:

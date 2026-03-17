@@ -72,13 +72,17 @@ _CPXF_TABLE = "uf_cpxf"
 
 # 包含 XMJC 字段的完整字段列表（用于 _row_to_dict）
 _DETAIL_COLUMNS_WITH_XMJC = _DETAIL_COLUMNS + ["XMJC"]
-_DETAIL_COLUMNS_WITH_CPXF_NAME = _DETAIL_COLUMNS + ["XMJC", "CPXF_NAME"]
+# CPXF_NAME: 产品细分名称(如"卓越生化试剂"), CPXF_BM: 产品细分BM编码(如"22")
+_DETAIL_COLUMNS_WITH_CPXF_NAME = _DETAIL_COLUMNS + ["XMJC", "CPXF_NAME", "CPXF_BM"]
 
 # 明细查询 SQL 模板（关联项目简称表和产品细分表）
 # XMJC 字段存储的是 UF_CPKXMJC.BH，需要关联查询 UF_CPKXMJC.XMJC
-# CPXF 字段存储的是 UF_CPXF.ID，需要关联查询 UF_CPXF.CPXF 获取产品细分名称
+# CPXF 字段存储的是 UF_CPXF.ID，需要关联查询 UF_CPXF.BM 获取产品细分BM编码
 _QUERY_DETAIL_SQL = f"""
-SELECT d.{', d.'.join(_DETAIL_COLUMNS)}, x.XMJC as XMJC, c.CPXF as CPXF_NAME
+SELECT d.{', d.'.join(_DETAIL_COLUMNS)},
+       x.XMJC as XMJC,
+       c.CPXF as CPXF_NAME,
+       c.BM as CPXF_BM
 FROM {{schema}}.{_DETAIL_TABLE} d
 LEFT JOIN {{schema}}.{_CPKXMJC_TABLE} x ON d.XMJC = x.BH
 LEFT JOIN {{schema}}.{_CPXF_TABLE} c ON d.CPXF = c.ID

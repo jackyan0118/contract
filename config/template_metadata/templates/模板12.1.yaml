@@ -1,14 +1,14 @@
 id: 模板12.1
 name: 北极星生化试剂（肾功和心肌酶）产品价格-集采中标价
-file: templates/模板12.1：北极星生化试剂（肾功和心肌酶）产品价格-集采中标价.docx
+file: 模板12.1：北极星生化试剂（肾功和心肌酶）产品价格-集采中标价.docx
 category: 集采产品
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '24'
-      value_type: bm
+
     name: CPXF=北极星生化试剂
   - conditions:
     - field: DJZMC
@@ -45,8 +45,7 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元
 speeches:
 - id: 话术1
   type: fixed

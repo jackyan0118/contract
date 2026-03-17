@@ -1,16 +1,16 @@
 id: 模板15
 name: 质谱试剂产品供货价
-file: templates/模板15：质谱试剂产品供货价.docx
+file: 模板15：质谱试剂产品供货价.docx
 category: 外购试剂
 match_conditions:
   产品细分: 质谱试剂
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '29'
-      value_type: bm
+
     name: CPXF=质谱试剂
   description: ''
 table:
@@ -56,5 +56,4 @@ table:
 paragraph_placeholders:
   标题:
     value: 质谱试剂产品供货价
-  金额单位:
-    value: 元
+  金额单位: 元

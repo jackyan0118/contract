@@ -182,7 +182,7 @@ def process_batch_task(task_id: str, wybs_list: List[str]) -> None:
     )
 
 
-@router.post("/api/v1/batch", response_model=ApiResponse)
+@router.post("/batch", response_model=ApiResponse)
 async def batch_generate(
     request: BatchRequest,
     background_tasks: BackgroundTasks,

@@ -2,19 +2,19 @@ category: 通用生化
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '21'
-      value_type: bm
+
     - field: LYXH
       operator: '='
       value: '2'
     name: 物料生成来源2
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '21'
-      value_type: bm
+
     - field: LYXH
       operator: '='
       value: '1'

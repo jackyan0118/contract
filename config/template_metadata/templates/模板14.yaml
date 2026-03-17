@@ -1,14 +1,14 @@
 id: 模板14
 name: KHB Polaris品牌北极星发光产品供货价
-file: templates/模板14：KHB Polaris品牌北极星发光产品供货价.docx
+file: 模板14：KHB Polaris品牌北极星发光产品供货价.docx
 category: 北极星发光
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
       value: '14'
-      value_type: bm
+
     name: CPXF=北极星发光试剂
   description: ''
 table:
@@ -46,5 +46,4 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  金额单位:
-    value: 元
+  金额单位: 元
