@@ -102,6 +102,8 @@ class QuotationDetail:
     sjkhan: Optional[str] = None  # 客户
     sjkhan_zd: Optional[str] = None  # 客户组
     cpxf: Optional[str] = None  # 产品型号
+    cpxf_name: Optional[str] = None  # 产品细分名称（如"卓越生化试剂"）
+    cpxf_bm: Optional[str] = None  # 产品细分BM编码（如"22"）
     pp: Optional[str] = None  # 品牌
     jytc: Optional[str] = None  # 业态
     xmjc: Optional[str] = None  # 项目简称

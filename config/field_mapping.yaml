@@ -74,6 +74,8 @@ quotation_detail:
     SJKH: "sjkkh"
     SJKHZD: "sjkkhzd"
     CPXF: "cpxf"
+    CPXF_NAME: "cpxf_name"
+    CPXF_BM: "cpxf_bm"
     PP: "pp"
     JYTC: "jytc"
     XMJC: "xmjc"

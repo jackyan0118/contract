@@ -270,6 +270,8 @@ class DataTransformer:
             sjkhan=result.get("sjkhan"),
             sjkhan_zd=result.get("sjkhan_zd"),
             cpxf=result.get("cpxf"),
+            cpxf_name=result.get("cpxf_name"),
+            cpxf_bm=result.get("cpxf_bm"),
             pp=result.get("pp"),
             jytc=result.get("jytc"),
             xmjc=result.get("xmjc"),
