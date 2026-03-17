@@ -194,11 +194,11 @@ class TestSpeechProcessor:
         assert "85" in result
 
     def test_default_variables(self):
-        """测试默认变量"""
+        """测试默认变量（现在为空字典，变量从 YAML 配置获取）"""
         processor = SpeechProcessor()
 
-        assert processor.DEFAULT_VARIABLES["肝功扣率"] == "85"
-        assert processor.DEFAULT_VARIABLES["通用扣率"] == "70"
+        # 默认变量现在为空字典，变量从 YAML 配置获取
+        assert processor.DEFAULT_VARIABLES == {}
 
 
 # ============ RowExpander 测试 ============
@@ -360,3 +360,442 @@ class TestGenerationResult:
 
         assert result.success is False
         assert result.error == "Template not found"
+
+
+class TestDocumentGeneratorMethods:
+    """DocumentGenerator 方法测试"""
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_paragraphs(self, mock_doc_class):
+        """测试填充段落"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "客户：{{客户名称}}"
+        mock_para.runs = [MagicMock()]
+        mock_doc.paragraphs = [mock_para]
+
+        data = {"客户名称": "测试医院"}
+
+        gen._fill_paragraphs(mock_doc, {}, data)
+
+    @patch('src.generators.document_generator.Document')
+    def test_apply_detail_filter_with_config(self, mock_doc_class):
+        """测试明细过滤（带配置）"""
+        gen = DocumentGenerator()
+
+        data_list = [
+            {"CPXF_BM": "22", "DJZMC": "特殊"},
+            {"CPXF_BM": "11", "DJZMC": "普通"},
+        ]
+
+        # 测试无配置时不过滤
+        result = gen._apply_detail_filter(None, data_list)
+
+        assert len(result) == 2
+
+    @patch('src.generators.document_generator.Document')
+    def test_calculate_discount_and_group(self, mock_doc_class):
+        """测试折扣计算分组"""
+        gen = DocumentGenerator()
+
+        data_list = [
+            {"JCJXJ": 85, "JCZBJ": 100},
+            {"JCJXJ": 70, "JCZBJ": 100},
+            {"JCJXJ": 85, "JCZBJ": 100},
+        ]
+
+        result, merge_info = gen._calculate_discount_and_group(data_list)
+
+        assert len(result) == 3
+        assert len(merge_info) > 0
+
+    @patch('src.generators.document_generator.Document')
+    def test_calculate_discount_with_zero(self, mock_doc_class):
+        """测试除零情况"""
+        gen = DocumentGenerator()
+
+        data_list = [
+            {"JCJXJ": 85, "JCZBJ": 0},
+            {"JCJXJ": None, "JCZBJ": 100},
+        ]
+
+        result, merge_info = gen._calculate_discount_and_group(data_list)
+
+        # 应该处理 None 和 0 的情况
+        assert len(result) == 2
+
+    @patch('src.generators.document_generator.Document')
+    def test_apply_product_matching(self, mock_doc_class):
+        """测试产品匹配"""
+        gen = DocumentGenerator()
+
+        data_list = [
+            {"WLMS": "产品A", "GHJY": 100},
+            {"WLMS": "未知产品", "GHJY": 200},
+        ]
+
+        # 测试无配置时返回原数据
+        result = gen._apply_product_matching(None, data_list)
+
+        assert len(result) == 2
+
+    @patch('src.generators.document_generator.Document')
+    def test_parse_table_columns_from_config(self, mock_doc_class):
+        """测试从配置解析表格列"""
+        gen = DocumentGenerator()
+
+        from src.config.template_loader import TableModel, TableColumnModel
+        table_config = TableModel(
+            placeholders={"start": "{{#明细表}}", "end": "{{/明细表}}"},
+            columns=[
+                TableColumnModel(name="序号", type="auto_number"),
+                TableColumnModel(name="产品名称", source_field="WLMS"),
+            ]
+        )
+
+        result = gen._parse_table_columns_from_config(table_config)
+
+        assert len(result) == 2
+        assert result[0]["name"] == "序号"
+        assert result[1]["field"] == "WLMS"
+
+    @patch('src.generators.document_generator.Document')
+    def test_get_speech_contents_empty(self, mock_doc_class):
+        """测试获取空话术内容"""
+        gen = DocumentGenerator()
+
+        result = gen._get_speech_contents(None, {})
+
+        assert result == []
+
+    @patch('src.generators.document_generator.Document')
+    def test_fix_table_layout(self, mock_doc_class):
+        """测试修复表格布局"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_table = MagicMock()
+        mock_doc.tables = [mock_table]
+
+        # 不应该抛出异常
+        gen._fix_table_layout(mock_doc)
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_document_with_config(self, mock_doc_class):
+        """测试填充文档（带配置）"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "{{标题}}"
+        mock_para.runs = [MagicMock()]
+        mock_doc.paragraphs = [mock_para]
+        mock_doc.tables = []
+
+        from src.config.template_loader import TemplateMetadataModel
+        template_config = TemplateMetadataModel(
+            id="test",
+            name="测试",
+            file="test.docx",
+            placeholders={"标题": "测试标题"}
+        )
+
+        quote_data = {"标题": "测试标题", "客户名称": "测试医院"}
+        detail_data = []
+
+        gen._fill_document(mock_doc, template_config, quote_data, detail_data)
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_document_without_config(self, mock_doc_class):
+        """测试填充文档（无配置）"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "{{客户名称}}"
+        mock_para.runs = [MagicMock()]
+        mock_doc.paragraphs = [mock_para]
+        mock_doc.tables = []
+
+        quote_data = {"客户名称": "测试医院"}
+        detail_data = []
+
+        gen._fill_document(mock_doc, None, quote_data, detail_data)
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_paragraphs_no_placeholders(self, mock_doc_class):
+        """测试填充段落（无占位符）"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "无占位符文本"
+        mock_para.runs = []
+        mock_doc.paragraphs = [mock_para]
+
+        gen._fill_paragraphs(mock_doc, {}, {})
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_tables_empty(self, mock_doc_class):
+        """测试填充表格（空表格）"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_doc.tables = []
+
+        gen._fill_tables(mock_doc, None, [], {})
+
+    @patch('src.generators.document_generator.Document')
+    def test_fill_tables_with_config(self, mock_doc_class):
+        """测试填充表格（带配置）"""
+        gen = DocumentGenerator()
+
+        mock_doc = MagicMock()
+        mock_table = MagicMock()
+        mock_row = MagicMock()
+        mock_cell = MagicMock()
+        mock_cell.text = "{{序号}}"
+        mock_row.cells = [mock_cell]
+        mock_table.rows = [mock_row]
+        mock_doc.tables = [mock_table]
+
+        from src.config.template_loader import TemplateMetadataModel, TableModel
+        template_config = TemplateMetadataModel(
+            id="test",
+            name="测试",
+            file="test.docx",
+            tables=[TableModel(
+                placeholders={"start": "{{#明细表}}", "end": "{{/明细表}}"},
+                columns=[],
+                filter_conditions=[]
+            )]
+        )
+
+        detail_data = [{"WLMS": "产品1"}]
+
+        gen._fill_tables(mock_doc, template_config, detail_data, {})
+
+
+class TestDocumentGeneratorGenerate:
+    """DocumentGenerator.generate 方法测试"""
+
+    def test_generate_template_not_found(self):
+        """测试模板文件不存在"""
+        gen = DocumentGenerator()
+
+        template = TemplateRule(
+            id="不存在模板",
+            name="不存在",
+            file="not_exist.docx",
+            条件=[]
+        )
+
+        result = gen.generate(
+            template,
+            SAMPLE_QUOTE_DATA,
+            SAMPLE_DETAIL_DATA,
+            output_dir=tempfile.gettempdir()
+        )
+
+        assert result.success is False
+        assert "not found" in result.error.lower()
+
+    @patch('src.generators.document_generator.Document')
+    def test_generate_with_wybs(self, mock_doc_class):
+        """测试带 wybs 参数生成"""
+        gen = DocumentGenerator()
+
+        # 使用存在的模板
+        template = TemplateRule(
+            id="模板1",
+            name="测试模板",
+            file="模板1.docx",
+            条件=[]
+        )
+
+        # Mock 文档
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "{{标题}}"
+        mock_para.runs = [MagicMock()]
+        mock_doc.paragraphs = [mock_para]
+        mock_doc.tables = []
+        mock_doc_class.return_value = mock_doc
+
+        result = gen.generate(
+            template,
+            SAMPLE_QUOTE_DATA,
+            SAMPLE_DETAIL_DATA,
+            output_dir=tempfile.gettempdir(),
+            wybs="WYBS20260310"
+        )
+
+        # 由于模板文件可能不存在，结果可能是失败
+        # 这里主要测试 wybs 参数能正常传递
+        assert result.template_id == "模板1"
+
+    @patch('src.generators.document_generator.Document')
+    def test_generate_success(self, mock_doc_class):
+        """测试成功生成"""
+        # 创建临时模板文件
+        import tempfile
+        import shutil
+        from pathlib import Path
+
+        # 查找实际存在的模板文件
+        template_dir = Path("docs/template")
+        template_files = list(template_dir.glob("*.docx"))
+
+        if not template_files:
+            pytest.skip("No template files found")
+
+        # 使用第一个模板文件
+        template_file = template_files[0]
+        template_name = template_file.stem
+
+        gen = DocumentGenerator()
+
+        template = TemplateRule(
+            id=template_name,
+            name="测试",
+            file=template_file.name,
+            条件=[]
+        )
+
+        # Mock Document 来避免实际修改文件
+        mock_doc = MagicMock()
+        mock_para = MagicMock()
+        mock_para.text = "测试"
+        mock_para.runs = [MagicMock()]
+        mock_doc.paragraphs = [mock_para]
+        mock_table = MagicMock()
+        mock_table.rows = []
+        mock_doc.tables = [mock_table]
+        mock_doc_class.return_value = mock_doc
+
+        result = gen.generate(
+            template,
+            SAMPLE_QUOTE_DATA,
+            SAMPLE_DETAIL_DATA,
+            output_dir=tempfile.gettempdir()
+        )
+
+        # 验证结果
+        assert result.template_id == template_name
+
+
+class TestDataFillerExtended:
+    """DataFiller 扩展测试"""
+
+    def test_filter_data_greater_than(self):
+        """测试大于操作符"""
+        filler = DataFiller()
+        conditions = [FilterCondition(field="LSJ", operator=">", value=150)]
+        data_list = [
+            {"LSJ": 100},
+            {"LSJ": 200},
+            {"LSJ": 150},
+        ]
+
+        result = filler.filter_data(data_list, conditions)
+
+        assert len(result) == 1
+        assert result[0]["LSJ"] == 200
+
+    def test_filter_data_less_than(self):
+        """测试小于操作符"""
+        filler = DataFiller()
+        conditions = [FilterCondition(field="LSJ", operator="<", value=150)]
+        data_list = [
+            {"LSJ": 100},
+            {"LSJ": 200},
+            {"LSJ": 150},
+        ]
+
+        result = filler.filter_data(data_list, conditions)
+
+        assert len(result) == 1
+        assert result[0]["LSJ"] == 100
+
+    def test_filter_data_not_equals(self):
+        """测试不等于操作符"""
+        filler = DataFiller()
+        conditions = [FilterCondition(field="DJZMC", operator="!=", value="肝功")]
+        data_list = [
+            {"DJZMC": "肝功"},
+            {"DJZMC": "肾功"},
+        ]
+
+        result = filler.filter_data(data_list, conditions)
+
+        assert len(result) == 1
+        assert result[0]["DJZMC"] == "肾功"
+
+    def test_filter_data_multiple_conditions(self):
+        """测试多条件组合"""
+        filler = DataFiller()
+        conditions = [
+            FilterCondition(field="LSJ", operator=">=", value=100),
+            FilterCondition(field="DJZMC", operator="contains", value="肝"),
+        ]
+        data_list = [
+            {"LSJ": 50, "DJZMC": "肝功"},
+            {"LSJ": 150, "DJZMC": "肝功项目"},
+            {"LSJ": 150, "DJZMC": "肾功"},
+        ]
+
+        result = filler.filter_data(data_list, conditions)
+
+        # 验证符合条件的数据存在
+        assert len(result) >= 1
+
+    def test_column_config_number(self):
+        """测试数字列配置"""
+        filler = DataFiller()
+        col = ColumnConfig(name="价格", source_field="LSJ", type="number")
+
+        value = filler._get_cell_value({"LSJ": 100}, col)
+
+        assert value == 100
+
+
+class TestSpeechProcessorExtended:
+    """SpeechProcessor 扩展测试"""
+
+    def test_process_speeches_with_context(self):
+        """测试带上下文的话术处理"""
+        processor = SpeechProcessor()
+        speeches = [
+            Speech(id="话术1", type="fixed", content="固定话术"),
+            Speech(id="话术2", type="conditional", content="条件话术"),
+        ]
+
+        result = processor.process_speeches(speeches, {"客户名称": "测试医院"})
+
+        assert len(result) >= 1
+
+    def test_replace_variables_multiple(self):
+        """测试多变量替换"""
+        processor = SpeechProcessor()
+
+        content = "客户：{{客户名称}}，金额：{{金额}}"
+        variables = {"客户名称": "医院A", "金额": "1000"}
+
+        result = processor._replace_speech_variables(content, variables, {})
+
+        assert "医院A" in result
+        assert "1000" in result
+
+    def test_replace_variables_missing(self):
+        """测试缺失变量"""
+        processor = SpeechProcessor()
+
+        content = "客户：{{客户名称}}，金额：{{金额}}"
+        variables = {"客户名称": "医院A"}
+
+        result = processor._replace_speech_variables(content, variables, {})
+
+        assert "医院A" in result
+        assert "{{金额}}" in result

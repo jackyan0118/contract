@@ -62,7 +62,7 @@ class RowExpander:
                 placeholder_row = table.rows[start_row]
                 for cell in placeholder_row.cells:
                     cell.text = ""
-                self._fill_row(placeholder_row, data_list[0], columns, 1)
+                self._fill_row(placeholder_row, data_list[0], columns, 1, False, None, discount_template)
             logger.info(f"Filled 1 row (replaced placeholder)")
         else:
             # 大于1条数据：
@@ -190,7 +190,7 @@ class RowExpander:
                     row = table.rows[start_row + row_idx]
                     # 判断该行是否是合并单元格的主单元格
                     is_merge_start = row_idx in merge_info
-                    self._fill_row(row, data, columns, row_idx + 1, is_merge_start, merge_info)
+                    self._fill_row(row, data, columns, row_idx + 1, is_merge_start, merge_info, discount_template)
 
             # 6. 对话术行进行文本替换
             if speech_row_texts:
@@ -345,7 +345,8 @@ class RowExpander:
         columns: List[Dict[str, str]],
         row_number: int,
         is_merge_start: bool = False,
-        merge_info: dict = None
+        merge_info: dict = None,
+        discount_template: str = None
     ) -> None:
         """填充行数据
 
@@ -356,6 +357,7 @@ class RowExpander:
             row_number: 行号
             is_merge_start: 是否是合并单元格的主单元格
             merge_info: 合并信息字典
+            discount_template: 折扣话术模板字符串
         """
         if merge_info is None:
             merge_info = {}
@@ -371,7 +373,7 @@ class RowExpander:
 
             if is_price_col:
                 # 供货价列：只在主单元格显示固定文本+折扣率，其他行隐藏
-                if is_merge_start:
+                if is_merge_start and discount_template:
                     discount = data.get('_discount')
                     if discount:
                         value = discount_template.format(discount=discount)
@@ -388,7 +390,7 @@ class RowExpander:
 
             cell.text = str(value)
 
-    def _merge_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int) -> None:
+    def _merge_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int, discount_template: str = None) -> None:
         """按折扣率合并单元格
 
         Args:
@@ -396,8 +398,9 @@ class RowExpander:
             start_row: 起始行索引
             merge_info: 合并信息 {row_idx: (discount, span_count)}
             col_count: 列数量
+            discount_template: 折扣话术模板字符串
         """
-        if not merge_info or col_count < 3:
+        if not merge_info or col_count < 3 or not discount_template:
             return
 
         # 供货价列是最后一列（索引 col_count - 1）

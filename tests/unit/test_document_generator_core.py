@@ -44,6 +44,15 @@ class TestDocumentGenerator:
         gen = DocumentGenerator()
         assert gen is not None
 
+    def test_generator_creation_with_params(self):
+        """测试带参数创建生成器"""
+        gen = DocumentGenerator(
+            template_dir="docs/template",
+            config_dir="config/template_metadata/templates"
+        )
+        assert gen is not None
+        assert gen.template_dir == Path("docs/template")
+
     @patch("src.generators.document_generator.Document")
     def test_replace_variables(self, mock_doc_class):
         """测试变量替换"""
@@ -69,6 +78,7 @@ class TestDocumentGenerator:
 
         assert result == "无变量"
 
+
     @patch("src.generators.document_generator.Document")
     def test_infer_field(self, mock_doc_class):
         """测试推断字段名"""
@@ -78,6 +88,25 @@ class TestDocumentGenerator:
         result = gen._infer_field("产品名称", 0)
         # 结果取决于具体实现
         assert isinstance(result, str)
+
+    @patch("src.generators.document_generator.Document")
+    def test_infer_field_known_header(self, mock_doc_class):
+        """测试推断已知表头"""
+        gen = DocumentGenerator()
+
+        result = gen._infer_field("物料编码", 0)
+        assert result == "WLDM"
+
+    @patch("src.generators.document_generator.Document")
+    def test_parse_table_columns_empty(self, mock_doc_class):
+        """测试解析空表格"""
+        gen = DocumentGenerator()
+
+        mock_table = MagicMock()
+        mock_table.rows = []
+
+        result = gen._parse_table_columns(mock_table)
+        assert result == []
 
 
 class TestMultiDocumentGenerator:

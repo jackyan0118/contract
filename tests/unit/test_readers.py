@@ -121,3 +121,105 @@ class TestTablePlaceholder:
         assert placeholder.start_pattern == "{{#明细表}}"
         assert placeholder.end_pattern == "{{/明细表}}"
         assert len(placeholder.columns) == 1
+
+    def test_table_placeholder_defaults(self):
+        """测试默认参数"""
+        placeholder = TablePlaceholder(
+            start_pattern="{{#表}}",
+            end_pattern="{{/表}}",
+            columns=[]
+        )
+
+        # 验证基本属性存在
+        assert placeholder.start_pattern == "{{#表}}"
+        assert placeholder.end_pattern == "{{/表}}"
+
+
+class TestWordTemplateReaderExtended:
+    """WordTemplateReader 扩展测试"""
+
+    @patch("src.readers.word_template_reader.Document")
+    @patch("src.readers.word_template_reader.Path.exists")
+    def test_read_with_table_placeholders(self, mock_exists, mock_document_class):
+        """测试读取带表格占位符的文档"""
+        mock_exists.return_value = True
+
+        # Mock 表格
+        mock_table = MagicMock()
+        mock_row = MagicMock()
+        mock_cell = MagicMock()
+        mock_cell.text = "{{序号}}{{产品名称}}"
+        mock_row.cells = [mock_cell]
+        mock_table.rows = [mock_row]
+
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = []
+        mock_doc.tables = [mock_table]
+        mock_document_class.return_value = mock_doc
+
+        reader = WordTemplateReader()
+        metadata = reader.read("test.docx")
+
+        # 验证元数据返回
+        assert metadata.file == "test.docx"
+
+    @patch("src.readers.word_template_reader.Document")
+    @patch("src.readers.word_template_reader.Path.exists")
+    def test_read_with_speech_markers(self, mock_exists, mock_document_class):
+        """测试读取带话术标记的文档"""
+        mock_exists.return_value = True
+
+        # Mock 段落 - 包含话术标记
+        mock_para = MagicMock()
+        mock_para.text = "{{话术}}"
+
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = [mock_para]
+        mock_doc.tables = []
+        mock_document_class.return_value = mock_doc
+
+        reader = WordTemplateReader()
+        metadata = reader.read("test.docx")
+
+        assert metadata.has_speech is True
+
+    @patch("src.readers.word_template_reader.Document")
+    @patch("src.readers.word_template_reader.Path.exists")
+    def test_read_empty_document(self, mock_exists, mock_document_class):
+        """测试读取空文档"""
+        mock_exists.return_value = True
+
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = []
+        mock_doc.tables = []
+        mock_document_class.return_value = mock_doc
+
+        reader = WordTemplateReader()
+        metadata = reader.read("empty.docx")
+
+        assert metadata.file == "empty.docx"
+        assert metadata.paragraph_placeholders == {}
+
+    @patch("src.readers.word_template_reader.Document")
+    @patch("src.readers.word_template_reader.Path.exists")
+    def test_extract_multiple_placeholders(self, mock_exists, mock_document_class):
+        """测试提取多个占位符"""
+        mock_exists.return_value = True
+
+        # Mock 多个段落
+        mock_para1 = MagicMock()
+        mock_para1.text = "{{客户名称}}"
+        mock_para2 = MagicMock()
+        mock_para2.text = "{{金额}}"
+        mock_para3 = MagicMock()
+        mock_para3.text = "普通文本"
+
+        mock_doc = MagicMock()
+        mock_doc.paragraphs = [mock_para1, mock_para2, mock_para3]
+        mock_doc.tables = []
+        mock_document_class.return_value = mock_doc
+
+        reader = WordTemplateReader()
+        metadata = reader.read("test.docx")
+
+        assert len(metadata.paragraph_placeholders) == 2

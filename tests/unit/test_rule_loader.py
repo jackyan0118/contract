@@ -154,3 +154,57 @@ class TestRuleLoadError:
         """测试异常继承"""
         error = RuleLoadError("Test")
         assert isinstance(error, Exception)
+
+
+class TestRuleLoaderExtended:
+    """RuleLoader 扩展测试"""
+
+    def test_get_cpxf_mapping(self, temp_rule_file):
+        """测试获取产品细分映射"""
+        loader = RuleLoader(rule_file=temp_rule_file)
+        loader.load()
+
+        mapping = loader.get_cpxf_mapping()
+
+        # 验证返回的是字典
+        assert isinstance(mapping, dict)
+
+    def test_get_rules_empty_file(self):
+        """测试加载空规则文件"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            rule_data = {"模板规则": []}
+            yaml.dump(rule_data, f, allow_unicode=True)
+            temp_path = f.name
+
+        try:
+            loader = RuleLoader(rule_file=temp_path)
+            rules = loader.load()
+
+            assert len(rules) == 0
+        finally:
+            Path(temp_path).unlink(missing_ok=True)
+
+    def test_load_with_empty_conditions(self):
+        """测试加载空条件的规则"""
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+            rule_data = {
+                "模板规则": [
+                    {
+                        "id": "模板1",
+                        "name": "测试",
+                        "file": "test.docx",
+                        "条件": []
+                    }
+                ]
+            }
+            yaml.dump(rule_data, f, allow_unicode=True)
+            temp_path = f.name
+
+        try:
+            loader = RuleLoader(rule_file=temp_path)
+            rules = loader.load()
+
+            assert len(rules) == 1
+            assert rules[0].条件 == []
+        finally:
+            Path(temp_path).unlink(missing_ok=True)

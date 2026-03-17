@@ -63,8 +63,20 @@ async def generate_document(
         details = transformer.transform_quotation_details(detail_data_list)
 
         # 转换为字典格式供模板匹配使用
+        # 将所有key转换为大写，与模板配置保持一致
         quote_dict = asdict(quotation) if hasattr(quotation, '__dataclass_fields__') else quotation
-        details_dict = [asdict(d) if hasattr(d, '__dataclass_fields__') else d for d in details]
+        if quote_dict:
+            quote_dict = {k.upper(): v for k, v in quote_dict.items()}
+
+        details_dict = []
+        for d in details:
+            if hasattr(d, '__dataclass_fields__'):
+                d_dict = asdict(d)
+            else:
+                d_dict = d
+            # 将所有key转换为大写
+            d_dict_upper = {k.upper(): v for k, v in d_dict.items()}
+            details_dict.append(d_dict_upper)
 
         logger.info(f"明细数据字段: {list(details_dict[0].keys()) if details_dict else 'none'}")
 

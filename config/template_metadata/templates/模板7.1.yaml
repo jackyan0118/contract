@@ -51,3 +51,28 @@ speeches:
   type: fixed
   position: after_table
   content: （待完善）
+# 折扣话术模板（用于单元格合并时显示折扣信息）
+discount_template: "江西糖代谢生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
+# 产品匹配规则
+product_matching:
+  products:
+    - name: 葡萄糖测定试剂盒（葡萄糖氧化酶法）
+      seq: 1
+    - name: 葡萄糖测定试剂盒(葡萄糖氧化酶法)
+      seq: 2
+    - name: 糖化血红蛋白测定试剂盒（高效液相色谱法）
+      seq: 3
+    - name: 糖化血红蛋白测定试剂盒(高效液相色谱法)
+      seq: 4
+    - name: 糖化白蛋白测定试剂盒（酶法）
+      seq: 5
+    - name: 1,5-脱水-D-葡桃糖测定试剂盒（酶法）
+      seq: 6
+    - name: 葡萄糖耐量试验试剂盒
+      seq: 7
+    - name: 糖尿病相关抗体测定试剂盒
+      seq: 8
+    - name: 胰岛素测定试剂盒
+      seq: 9
+    - name: C肽测定试剂盒
+      seq: 10
