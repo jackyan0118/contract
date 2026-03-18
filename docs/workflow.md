@@ -22,8 +22,9 @@
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │  1. API 入口: src/api/routes/generate.py                                           │
-│     - 验证 API Key                                                                 │
-│     - 接收 wybs 参数                                                               │
+│     - 验证 API Key (verify_api_key)                                               │
+│     - 接收 wybs 参数                                                              │
+│     - 返回 Base64 编码的 Word 文件或下载 URL                                        │
 └─────────────────────────────────────────┬───────────────────────────────────────────┘
                                           │
                                           ▼
@@ -41,13 +42,13 @@
                                           │
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  3. 数据转换处理: src/transformers/data_transformer.py                              │
+│  3. 数据转换处理: src/transformers/data_transformer.py                            │
 │                                                                                     │
 │  - 字段映射: config/field_mapping.yaml                                             │
 │  - 类型转换:                                                                      │
-│    * 价格字段 → Decimal (lsj, bzjxj, ghjy, jsj, klbfb 等)                         │
-│    * 整数字段 → int (id, mainid, lyxh 等)                                         │
-│  - 输出: Quotation + List[QuotationDetail]                                         │
+│    * 价格字段 → Decimal (lsj, bzjxj, ghjy, jsj, klbfb 等)                       │
+│    * 整数字段 → int (id, mainid, lyxh 等)                                        │
+│  - 输出: Quotation + List[QuotationDetail]                                        │
 └─────────────────────────────────────────┬───────────────────────────────────────────┘
                                           │
                                           ▼
@@ -67,7 +68,7 @@
 │  │    - CPXF_BM: 产品细分BM编码 (如 "22")                                   │    │
 │  │    - CPXF_NAME: 产品细分名称 (如 "卓越生化试剂")                         │    │
 │  │    - DJZMC: 定价组名称                                                   │    │
-│  │    - SFJC: 是否集采 (0=是, 1=否)                                         │    │
+│  │    - SFJC: 是否集采 (0=是, 1=否)                                        │    │
 │  │ 2. 直接使用 CPXF_BM 匹配模板规则                                         │    │
 │  │ 3. 返回匹配的 TemplateRule 列表                                          │    │
 │  └────────────────────────────────────────────────────────────────────────────┘    │
@@ -75,79 +76,84 @@
                                           │
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  5. Word 文档生成: src/generators/document_generator.py                             │
+│  5. Word 文档生成: src/generators/document_generator.py                           │
 │                                                                                     │
 │  ┌────────────────────────────────────────────────────────────────────────────┐    │
-│  │ Step 1: 加载模板配置                                                       │    │
+│  │ Step 1: 加载模板配置                                                     │    │
 │  │   - TemplateLoader.load(template.id)                                      │    │
-│  │   - 从 config/template_metadata/templates/{id}.yaml 加载                  │    │
-│  │   - 包含: table.columns, detail_filter, speeches, product_matching        │    │
+│  │   - 从 config/template_metadata/templates/{id}.yaml 加载                 │    │
+│  │   - 包含: table.columns, detail_filter, speeches, product_matching       │    │
 │  └────────────────────────────────────────────────────────────────────────────┘    │
 │                                    │                                                │
 │                                    ▼                                                │
 │  ┌────────────────────────────────────────────────────────────────────────────┐    │
 │  │ Step 2: 复制模板文件                                                       │    │
-│  │   - 从 docs/template/ 复制到 output/{wybs}/ 目录                         │    │
+│  │   - 从 templates/ 复制到 output/ 目录                                    │    │
 │  │   - 文件名: {template_id}_{timestamp}.docx                                │    │
 │  └────────────────────────────────────────────────────────────────────────────┘    │
 │                                    │                                                │
 │                                    ▼                                                │
 │  ┌────────────────────────────────────────────────────────────────────────────┐    │
-│  │ Step 3: _fill_document() - 填充文档                                        │    │
+│  │ Step 3: _fill_document() - 填充文档                                       │    │
 │  │                                                                             │    │
-│  │ 3.1 _fill_paragraphs() - 填充段落占位符                                    │    │
+│  │ 3.1 _fill_paragraphs() - 填充段落占位符                                  │    │
 │  │     - 替换 {{标题}}, {{副标题}}, {{报价单号}}, {{客户名称}} 等            │    │
 │  │     - 替换变量占位符 {{肝功扣率}} 等                                       │    │
 │  │                                                                             │    │
-│  │ 3.2 _fill_tables() - 填充表格                                             │    │
+│  │ 3.2 _fill_tables() - 填充表格                                            │    │
 │  │     ┌─────────────────────────────────────────────────────────────────┐   │    │
-│  │     │ a) 应用 detail_filter 过滤数据                                   │   │    │
-│  │     │    - 使用 DataFiller.filter_data()                               │   │    │
-│  │     │    - 根据条件过滤明细行                                           │   │    │
+│  │     │ a) 应用 detail_filter 过滤数据                                  │   │    │
+│  │     │    - 根据条件过滤明细行                                          │   │    │
 │  │     ├─────────────────────────────────────────────────────────────────┤   │    │
-│  │     │ b) 应用 product_matching 去重                                    │   │    │
-│  │     │    - 按标准产品列表匹配，未匹配的显示为"其他"                      │   │    │
+│  │     │ b) 应用 product_matching 去重                                   │   │    │
+│  │     │    - 按标准产品列表匹配，未匹配的显示为"其他"                     │   │    │
 │  │     ├─────────────────────────────────────────────────────────────────┤   │    │
-│  │     │ c) 计算折扣分组 (如果有 product_matching)                        │   │    │
+│  │     │ c) 计算折扣分组 (如果有 product_matching)                       │   │    │
 │  │     │    - 计算折扣率 JCJXJ/JCZBJ * 100                                │   │    │
 │  │     │    - 相同折扣的行合并单元格                                       │   │    │
 │  │     ├─────────────────────────────────────────────────────────────────┤   │    │
 │  │     │ d) 解析表格列配置                                                │   │    │
-│  │     │    - 从 template_config.table.columns 解析                         │   │    │
+│  │     │    - 从 template_config.table.columns 解析                        │   │    │
 │  │     │    - 或从 Word 表格表头推断                                       │   │    │
 │  │     ├─────────────────────────────────────────────────────────────────┤   │    │
-│  │     │ e) RowExpander.expand() - 扩展表格行                              │   │    │
+│  │     │ e) RowExpander.expand() - 扩展表格行                            │   │    │
 │  │     │    - 动态插入数据行                                               │   │    │
-│  │     │    - 保留话术行在末尾                                             │   │    │
+│  │     │    - 保留话术行在末尾                                            │   │    │
 │  │     │    - 支持垂直合并相同折扣的单元格                                  │   │    │
 │  │     ├─────────────────────────────────────────────────────────────────┤   │    │
-│  │     │ f) 获取话术内容并填充                                             │   │    │
+│  │     │ f) 获取话术内容并填充                                            │   │    │
 │  │     │    - SpeechProcessor.process_speeches()                          │   │    │
-│  │     │    - 替换话术行占位符                                             │   │    │
+│  │     │    - 替换话术行占位符                                            │   │    │
 │  │     └─────────────────────────────────────────────────────────────────┘   │    │
 │  │                                                                             │    │
 │  │ 3.3 _process_speeches() - 处理话术占位符                                 │    │
 │  │     - 段落中的话术占位符                                                  │    │
 │  │     - 变量替换                                                           │    │
 │  │                                                                             │    │
-│  │ 3.4 _fix_table_layout() - 修复表格布局                                   │    │
-│  │     - 将 autofit 改为 fixed，防止 WPS 渲染问题                           │    │
+│  │ 3.4 _fix_table_layout() - 修复表格布局                                  │    │
+│  │     - 将 autofit 改为 fixed，防止 WPS 渲染问题                          │    │
 │  └────────────────────────────────────────────────────────────────────────────┘    │
 │                                    │                                                │
 │                                    ▼                                                │
 │  ┌────────────────────────────────────────────────────────────────────────────┐    │
 │  │ Step 4: 保存文档                                                          │    │
-│  │   - doc.save(output_path)                                               │    │
+│  │   - doc.save(output_path)                                                │    │
 │  │   - 返回 GenerationResult (success, file_path, template_id)             │    │
+│  └────────────────────────────────────────────────────────────────────────────┘    │
+│                                                                                     │
+│  ┌────────────────────────────────────────────────────────────────────────────┐    │
+│  │ Step 5: 文件处理                                                          │    │
+│  │   - FilePacker.pack_files() - 打包为 ZIP                                 │    │
+│  │   - 返回下载 URL 或 Base64                                                │    │
 │  └────────────────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────┬───────────────────────────────────────────┘
                                           │
                                           ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│  6. 返回响应: src/api/routes/generate.py                                           │
+│  6. 返回响应: src/api/routes/generate.py                                          │
 │                                                                                     │
-│  - 读取生成的 Word 文件为 Base64                                                  │
-│  - 返回 GenerateSuccessData (filename, file_base64, templates_used)               │
+│  - 单文件: 返回 Base64 编码的 Word 文件                                           │
+│  - 多文件: 返回 ZIP 文件的 Base64                                                 │
 │  - ApiResponse 包装 (success, data, message)                                      │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -161,12 +167,15 @@
 **文件**: `src/api/routes/generate.py`
 
 主要流程:
-1. 接收 `wybs` (报价单号)
-2. 查询主表和明细表数据
-3. 提取产品细分、定价组、是否集采等信息
-4. 使用 `RuleLoader` 加载规则并匹配模板
-5. 调用 `DocumentGenerator` 生成文档
-6. 返回 Base64 编码的 Word 文件
+1. 验证 API Key
+2. 接收 `wybs` (报价单号)
+3. 查询主表和明细表数据
+4. 数据转换 (DataTransformer)
+5. 提取产品细分、定价组、是否集采等信息
+6. 使用 `RuleLoader` 加载规则并匹配模板
+7. 调用 `DocumentGenerator` 生成文档
+8. 打包文件 (FilePacker)
+9. 返回 Base64 编码的 Word/ZIP 文件
 
 ### 2. 数据查询 (queries/)
 
@@ -176,8 +185,8 @@
 | `quotation_detail.py` | `uf_htjgkst_dt1` | 报价单明细表 |
 
 **明细表关联查询**:
-- `uf_cpkxmjc` - 获取项目简称 (XMJC)
-- `uf_cpxf` - 获取产品细分名称和 BM 编码
+- `UF_CPKXMJC` - 获取项目简称 (XMJC)
+- `UF_CPXF` - 获取产品细分名称和 BM 编码
 
 ### 3. 数据转换 (transformers/)
 
@@ -220,22 +229,29 @@
 | `data_filler.py` | 数据过滤、条件匹配、变量替换 |
 | `row_expander.py` | 表格行扩展、单元格合并 |
 | `speech_processor.py` | 话术处理、互斥组逻辑 |
+| `constants.py` | 常量定义 |
 
 **RowExpander 关键功能**:
 - 动态插入数据行
 - 保留话术行在表格末尾
-- 按折扣率垂直合并单元格（需要配置 discount_template）
+- 按折扣率垂直合并单元格 (vMerge)
 
 **SpeechProcessor 关键功能**:
 - 条件话术: 根据数据条件决定是否显示
 - 固定话术: 直接添加
 - 互斥组: 同组话术只显示一个
 
-### 7. 配置加载
+### 7. 异常处理 (exceptions/)
+
+**文件**:
+- `src/exceptions/base.py` - 基础异常类
+- `src/exceptions/document.py` - 文档生成异常
+
+### 8. 配置加载
 
 **TemplateLoader** (`src/config/template_loader.py`):
 - 从 `config/template_metadata/templates/{id}.yaml` 加载模板元数据
-- 包括: 表格列配置、明细过滤规则、话术配置、产品匹配规则、折扣话术模板
+- 包括: 表格列配置，明细过滤规则、话术配置、产品匹配规则
 
 **RuleLoader** (`src/services/rule_loader.py`):
 - 从 `config/template_rules.yaml` 加载模板规则
@@ -259,18 +275,17 @@
 - **paragraph_placeholders**: 段落占位符映射
 - **speeches**: 话术配置
 - **product_matching**: 产品匹配规则（用于模板6.1等）
-- **discount_template**: 折扣话术模板（仅模板6.1需要）
 
 ---
 
 ## 数据流向图
 
 ```
-Oracle 数据库
+Oracle 数据库 (泛微E9)
      │
      ▼
 ┌─────────────┐     ┌──────────────────┐
-│ uf_htjgkst  │     │ uf_htjgkst_dt1   │
+│ uf_htjgkst  │     │ uf_htjgkst_dt1  │
 │   (主表)    │     │    (明细表)       │
 └──────┬──────┘     └────────┬─────────┘
        │                     │
@@ -284,37 +299,43 @@ Oracle 数据库
                      ▼
 ┌──────────────────────────────────────────┐
 │      quotation_detail.py                 │
-│  get_quotation_details(wybs)             │
-│  - 关联 UF_CPKXMJC                       │
-│  - 关联 UF_CPXF                          │
+│  get_quotation_details(wybs)           │
+│  - 关联 UF_CPKXMJC                     │
+│  - 关联 UF_CPXF                        │
 └────────────────────┬─────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────┐
-│    DataTransformer.transform()            │
-│  - 字段映射                               │
-│  - 类型转换                               │
+│    DataTransformer.transform()           │
+│  - 字段映射                             │
+│  - 类型转换                             │
 └────────────────────┬─────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────┐
-│     RuleLoader + 模板匹配                 │
-│  - 获取产品细分编号                       │
-│  - 匹配模板规则                           │
+│     RuleLoader + 模板匹配                │
+│  - 获取产品细分编号 (CPXF_BM)            │
+│  - 匹配模板规则                         │
 └────────────────────┬─────────────────────┘
                      │
                      ▼
 ┌──────────────────────────────────────────┐
-│    DocumentGenerator.generate()           │
-│  - 加载模板 YAML                         │
-│  - 过滤数据 (detail_filter)              │
-│  - 填充表格                               │
-│  - 处理话术                               │
-│  - 保存 Word 文件                         │
+│    DocumentGenerator.generate()          │
+│  - 加载模板 YAML                        │
+│  - 过滤数据 (detail_filter)             │
+│  - 填充表格                             │
+│  - 处理话术                             │
+│  - 保存 Word 文件                       │
 └────────────────────┬─────────────────────┘
                      │
                      ▼
-           生成 Word 文档
+┌──────────────────────────────────────────┐
+│         FilePacker.pack_files()         │
+│  - 打包为 ZIP (可选)                    │
+└────────────────────┬─────────────────────┘
+                     │
+                     ▼
+           生成 Word/ZIP 文档
 ```
 
 ---
@@ -329,14 +350,19 @@ Oracle 数据库
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF_BM
+    - field: CPXF
       operator: '='
-      value: '22'
+      value: '150'
     - field: DJZMC
       operator: contains
-      value: 特殊
-    name: 特殊定价组
+      value: 肾功和心肌酶
+    name: 卓越生化肾功心肌酶
 ```
+
+**字段说明**:
+- `field`: 字段名（支持 CPXF, CPXF_BM, DJZMC 等）
+- `operator`: 操作符 (=, !=, contains, >, < 等)
+- `value`: 比较值
 
 ### product_matching (产品匹配)
 
@@ -349,14 +375,6 @@ product_matching:
       seq: 1
     - name: 肌酐检测试剂盒（肌氨酸氧化酶法）
       seq: 2
-```
-
-### discount_template (折扣话术模板)
-
-用于在合并单元格中显示折扣信息（仅模板6.1）。
-
-```yaml
-discount_template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
 ```
 
 ### speeches (话术配置)
@@ -378,3 +396,77 @@ speeches:
   content: "特殊定价组话术..."
   mutex_group: group1
 ```
+
+---
+
+## API 接口说明
+
+### POST /api/generate
+
+单文件生成接口。
+
+**请求参数**:
+```json
+{
+  "wybs": "WYBS20250316001"
+}
+```
+
+**响应**:
+```json
+{
+  "success": true,
+  "data": {
+    "filename": "价格附件.docx",
+    "file_base64": "UEsDBBQABgA...",
+    "templates_used": ["模板6.1"]
+  },
+  "message": "生成成功"
+}
+```
+
+### POST /api/generate/multi
+
+多文件生成接口（返回 ZIP）。
+
+### POST /api/batch/generate
+
+批量生成接口。
+
+### GET /api/templates
+
+获取可用模板列表。
+
+---
+
+## 数据库字段说明
+
+### uf_htjgkst (报价单主表)
+
+| 字段 | 说明 |
+|------|------|
+| WYBS | 报价单号 |
+| HTBH | 合同编号 |
+| LCBH | 流程编号 |
+
+### uf_htjgkst_dt1 (报价单明细表)
+
+| 字段 | 说明 |
+|------|------|
+| WYBS | 报价单号 |
+| LYXH | 流水序号 |
+| WLMS | 物料描述 |
+| DJZMC | 定价组名称 |
+| CPXF | 产品细分ID |
+| GHJY | 供货价 |
+| JCJXJ | 集采价 |
+| JCZBJ | 集采基准价 |
+| SFJC | 是否集采 (0=是, 1=否) |
+
+### uf_cpxf (产品细分表)
+
+| 字段 | 说明 |
+|------|------|
+| ID | 产品细分ID |
+| BM | 编码 (如 "22") |
+| CPXF | 产品细分名称 |

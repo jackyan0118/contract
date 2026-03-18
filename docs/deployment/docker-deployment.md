@@ -12,15 +12,15 @@
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │   ┌──────────────┐     ┌──────────────┐     ┌─────────────┐  │
-│   │   Nginx      │────▶│   FastAPI    │────▶│   Oracle    │  │
-│   │  (反向代理)   │     │   (应用)      │     │  (外部数据库) │  │
+│   │   客户端      │────▶│   FastAPI    │────▶│   Oracle    │  │
+│   │  (浏览器/API) │     │   (应用)      │     │  (外部数据库) │  │
 │   └──────────────┘     └──────────────┘     └─────────────┘  │
-│         │                    │                                   │
-│         │                    ▼                                   │
-│         │            ┌──────────────┐                           │
-│         └───────────▶│  静态文件目录  │                           │
-│                      │ (下载文件)     │                           │
-│                      └──────────────┘                           │
+│                                │                                   │
+│                                ▼                                   │
+│                        ┌──────────────┐                           │
+│                        │  静态文件目录  │                           │
+│                        │ (下载文件)     │                           │
+│                        └──────────────┘                           │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -29,8 +29,12 @@
 
 | 容器名称 | 镜像 | 说明 |
 |----------|------|------|
-| contract-app | 自建 | 价格附件生成系统应用 |
-| contract-nginx | nginx:alpine | 反向代理和静态文件服务 |
+| contract-app | 自建 | 价格附件生成系统应用（uvicorn） |
+
+### 1.3 部署模式
+
+- **内网使用**: 直接使用 uvicorn 服务（推荐）
+- **公网使用**: 如需 HTTPS，可在前端配置 Nginx 或其他反向代理
 
 ---
 
@@ -68,14 +72,13 @@ Oracle Instant Client 已集成到 Docker 镜像中（位于 `deploy/docker/inst
 ```
 deploy/
 ├── docker/
-│   ├── Dockerfile                # 应用镜像构建
-│   ├── docker-compose.yml        # 统一配置
-│   ├── nginx.conf               # Nginx 配置
-│   ├── instantclient_21_19/     # Oracle Instant Client
-│   ├── .env.example             # 环境变量模板
+│   ├── Dockerfile                   # 应用镜像构建
+│   ├── docker-compose.yml           # Docker 编排配置
+│   ├── docker-compose.remote.yml    # 远程部署配置
+│   ├── instantclient_21_19/        # Oracle Instant Client
+│   ├── .env.example                 # 环境变量模板
 │   └── scripts/
-│       └── entrypoint.sh        # 入口脚本
-└── README.md                    # 部署指南
+│       └── push-image.sh            # 镜像推送脚本
 ```
 
 ### 4.2 环境变量
@@ -88,71 +91,106 @@ deploy/
 | DATABASE_MIN_CONNECTIONS | 最小连接数 | 5 | - |
 | DATABASE_MAX_CONNECTIONS | 最大连接数 | 20 | - |
 | DOWNLOADS_BASE_URL | 下载 URL 基础地址 | http://localhost:8000 | - |
+| TEMPLATE_PATH | 模板目录 | config/templates | - |
 | SECURITY_API_KEYS | API Key 列表 | - | ✅ |
 
-### 4.3 Nginx 配置
+### 4.3 配置文件
 
-```nginx
-# 核心功能
-- 静态文件服务 (/static/)
-- API 反向代理 (/api/)
-- 健康检查 (/health)
-- Gzip 压缩
-- SSL 支持（可选）
+#### .env 示例
+
+```bash
+# 必需配置
+ORACLE_DSN=oracle://username:password@host:port/service_name
+SECURITY_API_KEYS=[{"key":"sk_prod_xxx","name":"生产环境","enabled":true}]
+
+# 可选配置
+APP_DEBUG=false
+LOGGING_LEVEL=INFO
 ```
 
 ---
 
-## 5. 部署步骤
+## 5. 本地部署
 
-### 5.1 配置环境变量
-
-```bash
-cd deploy/docker
-cp .env.example .env
-vim .env
-```
-
-必需配置：
+### 5.1 构建镜像
 
 ```bash
-# Oracle 连接字符串
-ORACLE_DSN=oracle://username:password@host:port/service_name
+cd /Users/yan/khb/contract
 
-# API Key（JSON 格式）
-SECURITY_API_KEYS=[{"key":"sk_prod_xxx","name":"生产环境","enabled":true}]
+# 构建镜像
+docker build -f deploy/docker/Dockerfile -t docker-app:latest .
 ```
 
 ### 5.2 启动服务
 
 ```bash
-# 构建并启动
-docker-compose up -d --build
+cd deploy/docker
 
-# 查看日志
-docker-compose logs -f
+# 复制环境变量模板
+cp .env.example .env
+vim .env  # 编辑配置
+
+# 启动服务
+docker-compose up -d
 ```
 
 ### 5.3 验证部署
 
 ```bash
 # 健康检查
-curl http://localhost:8000/health
+curl http://localhost:8000/api/v1/health
 
 # API 测试
 curl -X POST http://localhost:8000/api/v1/generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <your-api-key>" \
-  -d '{"wybs": "TEST001"}'
+  -d '{"wybs": "2026030006"}'
 ```
 
 ---
 
-## 6. 常用命令
+## 6. 远程部署
+
+### 6.1 推送镜像
+
+```bash
+cd /Users/yan/khb/contract
+
+# 构建并推送镜像
+docker build -f deploy/docker/Dockerfile -t docker-app:latest .
+./deploy/docker/scripts/push-image.sh
+```
+
+### 6.2 远程服务器配置
+
+```bash
+ssh root@192.168.20.162
+
+# 创建应用目录
+mkdir -p /opt/contract-app
+```
+
+### 6.3 复制配置文件
+
+需要复制以下文件到远程服务器：
+- `docker-compose.yml` 或 `docker-compose.remote.yml`
+- `.env`（配置 Oracle 连接等）
+- `config/` 目录（配置文件和模板）
+
+### 6.4 启动服务
+
+```bash
+cd /opt/contract-app
+docker-compose up -d
+```
+
+---
+
+## 7. 常用命令
 
 ```bash
 # 启动服务
-docker-compose up -d --build
+docker-compose up -d
 
 # 停止服务
 docker-compose down
@@ -161,63 +199,62 @@ docker-compose down
 docker-compose restart
 
 # 查看日志
-docker-compose logs -f app
+docker-compose logs -f
 
 # 进入容器
 docker exec -it contract-app /bin/bash
 
 # 查看状态
 docker-compose ps
+
+# 完全重建（清除卷）
+docker-compose down -v
+docker-compose up -d
 ```
 
 ---
 
-## 7. 数据持久化
+## 8. 数据持久化
 
-### 7.1 卷配置
+### 8.1 卷配置
 
 | 卷名 | 用途 | 容器路径 |
 |------|------|----------|
 | contract-output | 下载文件 | /app/output |
 
-### 7.2 备份
+### 8.2 备份
 
 ```bash
 # 备份输出目录
-docker run --rm -v contract_output:/data -v $(pwd):/backup alpine \
-  tar czf /backup/contract-output.tar.gz /data
+docker cp contract-app:/app/output/downloads ./downloads-backup/
+
+# 备份配置
+tar -czvf config-backup.tar.gz /opt/contract-app/config/
 ```
 
 ---
 
-## 8. 监控与运维
+## 9. 监控与运维
 
-### 8.1 健康检查
+### 9.1 健康检查
 
 应用提供健康检查端点：
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8000/api/v1/health
 ```
 
-### 8.2 日志管理
+### 9.2 日志管理
 
 ```bash
 # 应用日志
-docker-compose logs -f app
+docker-compose logs -f
 
-# Nginx 日志
-docker-compose logs -f nginx
-
-# Docker 日志轮转（docker-compose.yml 中配置）
-logging:
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
+# Docker 日志轮转
+# 可在 daemon.json 中配置
 ```
 
-### 8.3 磁盘清理
+### 9.3 磁盘清理
 
 ```bash
 # 清理过期文件（超过 24 小时）
@@ -226,9 +263,9 @@ docker exec contract-app python -c "from src.utils.file_cleaner import run_clean
 
 ---
 
-## 9. 故障排查
+## 10. 故障排查
 
-### 9.1 常见问题
+### 10.1 常见问题
 
 | 问题 | 原因 | 解决方案 |
 |------|------|----------|
@@ -237,7 +274,7 @@ docker exec contract-app python -c "from src.utils.file_cleaner import run_clean
 | 应用启动失败 | 配置错误 | 检查环境变量 |
 | 内存不足 | 连接数过多 | 调整连接池配置 |
 
-### 9.2 调试命令
+### 10.2 调试命令
 
 ```bash
 # 进入容器
@@ -255,18 +292,19 @@ docker network inspect contract_default
 
 ---
 
-## 10. 安全建议
+## 11. 安全建议
 
 1. **不要在代码中硬编码密码**，使用环境变量
 2. **限制 API Key 权限**，生产环境使用只读账号
 3. **定期更换密码**，至少90天更换一次
-4. **使用 HTTPS**，生产环境配置 SSL 证书
+4. **内网使用**，建议只在内部网络访问
 5. **配置防火墙**，只开放必要端口
 
 ---
 
-## 11. 版本历史
+## 12. 版本历史
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
 | v1.0 | 2026-03-17 | 初始版本 |
+| v1.1 | 2026-03-18 | 移除 Nginx，简化内网部署配置 |
