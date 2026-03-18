@@ -8,16 +8,18 @@ import time
 from contextlib import contextmanager
 from typing import Generator, Optional
 
-import oracledb
-
 # 启用 Thick 模式以支持旧版 Oracle 数据库
 # 注意: 需要安装 oracle-instantclient-basic
+# 必须在导入 oracledb 之前初始化
 ORACLE_INSTANT_CLIENT_PATH = os.environ.get("ORACLE_INSTANT_CLIENT", "/opt/oracle/instantclient")
+
+# 先尝试初始化 Thick 模式
 try:
+    import oracledb
     oracledb.init_oracle_client(lib_dir=ORACLE_INSTANT_CLIENT_PATH)
 except Exception:
-    # 如果没有安装 Instant Client，Thin 模式仍然可用
-    pass
+    # 如果没有安装 Instant Client，导入 Thin 模式
+    import oracledb  # noqa: F401
 
 from src.database.config import get_database_config
 from src.exceptions import ConnectionException, PoolExhaustedException

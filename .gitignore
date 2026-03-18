@@ -65,3 +65,4 @@ deploy/docker/*.zip
 # ==================== OS ====================
 .DS_Store
 Thumbs.db
+instantclient_21_19/

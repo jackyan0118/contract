@@ -5,10 +5,6 @@
 ### 1. 环境准备
 
 ```bash
-# 克隆项目
-git clone <repository-url>
-cd contract
-
 # 进入部署目录
 cd deploy/docker
 ```
@@ -19,41 +15,23 @@ cd deploy/docker
 # 复制环境变量模板
 cp .env.example .env
 
-# 编辑配置（确保 ORACLE_DSN 指向正确的外部 Oracle 数据库）
+# 编辑配置
 vim .env
 ```
 
 ### 3. 启动服务
 
-#### 开发环境
-
 ```bash
-# 启动应用 + Nginx
+# 构建并启动
 docker-compose up -d --build
 
 # 查看日志
 docker-compose logs -f
 ```
 
-#### 生产环境
-
-```bash
-# 创建生产配置
-cp .env.example .env.production
-
-# 编辑生产配置（必须修改密码）
-vim .env.production
-
-# 启动生产服务
-docker-compose -f docker-compose.prod.yml up -d --build
-```
-
 ### 4. 验证部署
 
 ```bash
-# 检查服务状态
-docker-compose ps
-
 # 健康检查
 curl http://localhost:8000/health
 
@@ -68,115 +46,58 @@ curl -X POST http://localhost:8000/api/v1/generate \
 
 ```
 deploy/docker/
-├── .env.example              # 环境变量模板
-├── Dockerfile                # 应用镜像构建
-├── docker-compose.yml        # 开发环境配置
-├── docker-compose.prod.yml   # 生产环境配置
-├── nginx.conf               # 开发环境 Nginx
-├── nginx.prod.conf          # 生产环境 Nginx
-├── instantclient_21_19/    # Oracle Instant Client（已集成）
-├── scripts/
-│   └── entrypoint.sh        # 入口脚本
-└── README.md                # 本文件
+├── .env.example          # 环境变量模板
+├── Dockerfile            # 应用镜像构建
+├── docker-compose.yml   # 统一配置
+├── nginx.conf           # Nginx 配置
+├── instantclient_21_19/ # Oracle Instant Client
+└── scripts/
+    └── entrypoint.sh    # 入口脚本
 ```
+
+## 环境变量
+
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| ORACLE_DSN | Oracle 连接字符串 | （必须配置） |
+| APP_DEBUG | 调试模式 | false |
+| LOGGING_LEVEL | 日志级别 | INFO |
+| DATABASE_MIN_CONNECTIONS | 最小连接数 | 5 |
+| DATABASE_MAX_CONNECTIONS | 最大连接数 | 20 |
+| DOWNLOADS_BASE_URL | 下载 URL 基础地址 | http://localhost:8000 |
+| SECURITY_API_KEYS | API Key 列表 | （必须配置） |
 
 ## Oracle 数据库配置
 
-所有环境均使用**外部 Oracle 数据库**，通过 `ORACLE_DSN` 环境变量配置。
-
-### 配置示例
-
-修改 `.env` 文件：
+配置外部 Oracle 数据库连接：
 
 ```bash
 # 格式: oracle://username:password@host:port/service_name
 ORACLE_DSN=oracle://read_db:YourPassword@172.16.15.6:1521/oadata
 ```
 
-### 可用环境变量
-
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| ORACLE_DSN | Oracle 连接字符串 | oracle://read_db:@localhost:1521/oadata |
-| DATABASE_MIN_CONNECTIONS | 最小连接数 | 2 |
-| DATABASE_MAX_CONNECTIONS | 最大连接数 | 10 |
-| DATABASE_CONNECT_TIMEOUT | 连接超时(秒) | 30 |
-| DATABASE_COMMAND_TIMEOUT | 命令超时(秒) | 60 |
-
-## 常见问题
-
-### 1. Oracle 连接失败
+## 常用命令
 
 ```bash
-# 检查 Oracle 网络连通性
-telnet 172.16.15.6 1521
-
-# 查看应用日志
-docker-compose logs app
-
-# 确认 Oracle 服务正常运行
-```
-
-### 2. 磁盘空间不足
-
-```bash
-# 清理未使用的 Docker 资源
-docker system prune -a
-
-# 清理过期文件
-docker exec contract-app python -c "from src.utils.file_cleaner import run_cleanup; run_cleanup('/app/output/downloads')"
-```
-
-### 3. 应用启动失败
-
-```bash
-# 查看应用日志
-docker-compose logs app
-
-# 进入容器调试
-docker exec -it contract-app /bin/bash
-```
-
-## 更新部署
-
-```bash
-# 拉取最新代码
-git pull
-
-# 重新构建并启动
+# 启动
 docker-compose up -d --build
 
-# 查看更新日志
-docker-compose logs -f
-```
-
-## 停止服务
-
-```bash
-# 停止所有服务
+# 停止
 docker-compose down
 
-# 停止并删除数据卷（慎用）
-docker-compose down -v
+# 查看日志
+docker-compose logs -f app
+
+# 进入容器
+docker exec -it contract-app /bin/bash
+
+# 重启
+docker-compose restart
 ```
 
-## 备份与恢复
-
-### 备份
+## 磁盘空间清理
 
 ```bash
-# 备份配置文件
-cp .env .env.backup
-
-# 备份数据卷
-docker run --rm -v contract_output:/data -v $(pwd):/backup alpine \
-  tar czf /backup/contract-output.tar.gz /data
-```
-
-### 恢复
-
-```bash
-# 恢复数据卷
-docker run --rm -v contract_output:/data -v $(pwd):/backup alpine \
-  tar xzf /backup/contract-output.tar.gz -C /
+# 清理过期文件
+docker exec contract-app python -c "from src.utils.file_cleaner import run_cleanup; run_cleanup('/app/output/downloads')"
 ```

@@ -1,70 +1,77 @@
 # 价格附件生成系统 - Docker 构建文件
-# Python 3.11 + Oracle Instant Client
 
 # =============================================================================
-# 阶段1: 构建依赖
+# 阶段1: 构建依赖 (linux/amd64)
 # =============================================================================
-FROM python:3.11-slim AS builder
+FROM --platform=linux/amd64 python:3.11-slim-bookworm AS builder
 
 # 安装构建依赖
 RUN apt-get update && apt-get install -y \
-    gcc \
     libaio1 \
-    wget \
-    unzip \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 安装 Python 依赖
+# 复制项目文件
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir --user -e .
+COPY requirements.txt ./
+COPY src ./src
+COPY config ./config
+COPY deploy/docker/instantclient_21_19 ./instantclient_21_19
+
+# 安装 Python 依赖
+RUN pip install --no-cache-dir --user --upgrade pip && \
+    pip install --no-cache-dir --user -r requirements.txt
 
 # =============================================================================
 # 阶段2: 运行镜像
 # =============================================================================
-FROM python:3.11-slim
+FROM --platform=linux/amd64 python:3.11-slim-bookworm
 
 # 安装运行时依赖
 RUN apt-get update && apt-get install -y \
     libaio1 \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -m -u 1000 appuser
+    && rm -rf /var/lib/apt/lists/*
 
-# 复制 Python 依赖（从 builder 阶段）
-COPY --from=builder /root/.local /home/appuser/.local
+# 复制 Oracle Instant Client（本地已解压）
+COPY --from=builder /app/instantclient_21_19 /opt/oracle/instantclient
 
-# 复制 Oracle Instant Client（本地目录，已下载到 deploy/docker/instantclient_21_19）
-COPY deploy/docker/instantclient_21_19 /opt/oracle/instantclient
+# 复制 Python 依赖
+COPY --from=builder /root/.local /root/.local
 
 # 复制应用代码
-COPY --from=builder /app /app
+COPY --from=builder /app/src /app/src
+COPY --from=builder /app/config /app/config
+COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 
-# 复制模板文件
-COPY --chown=appuser:appuser templates /app/templates
+# 设置工作目录
+WORKDIR /app
+
+# 先创建目录并设置权限，再复制文件
+RUN mkdir -p /app/output/downloads /app/logs /app/config
+
+# 创建用户
+RUN useradd -m -u 1000 appuser
+
+# 复制文件并设置所有者
+RUN cp -r /root/.local /home/appuser/.local && \
+    chown -R appuser:appuser /app && \
+    chown -R appuser:appuser /opt/oracle
 
 # 设置环境变量
 ENV PATH=/home/appuser/.local/bin:$PATH \
     PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
     ORACLE_INSTANT_CLIENT=/opt/oracle/instantclient \
-    LD_LIBRARY_PATH=/opt/oracle/instantclient \
-    TNS_ADMIN=/opt/oracle/instantclient/network/admin
+    LD_LIBRARY_PATH=/opt/oracle/instantclient:$LD_LIBRARY_PATH
 
-# 创建必要目录
-RUN mkdir -p /app/output/downloads /app/logs /app/config && \
-    chown -R appuser:appuser /app
-
-# 切换到非 root 用户
 USER appuser
 
-# 暴露端口
 EXPOSE 8000
 
-# 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8000/api/v1/health || exit 1
 
-# 启动命令
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
