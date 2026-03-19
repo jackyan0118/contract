@@ -187,13 +187,12 @@ class WeaverSettings(BaseSettings):
         default_factory=lambda: ["172.16.14.6:8080", "172.16.14.19:8080"],
         description="OA服务器地址列表"
     )
-    active_host_index: int = Field(default=0, description="当前使用的服务器索引")
     system_id: str = Field(
         default="SalesContract_PriceUrl_Update",
         description="系统标识"
     )
-    password: str = Field(default="weaver2025", description="MD5签名密码")
-    operator_id: str = Field(default="5288", description="默认操作人ID")
+    password: str = Field(default="", description="MD5签名密码")
+    operator_id: str = Field(default="", description="默认操作人ID")
     timeout: int = Field(default=30, description="请求超时（秒）")
     retry_count: int = Field(default=3, description="重试次数")
 
