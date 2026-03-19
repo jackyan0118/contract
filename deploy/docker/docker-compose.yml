@@ -2,8 +2,8 @@ services:
   app:
     image: docker-app:latest
     container_name: contract-app
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ../../config:/app/config:ro
       - contract-output:/app/output
@@ -20,7 +20,7 @@ services:
       - TEMPLATE_PATH=${TEMPLATE_PATH:-config/templates}
       - TEMPLATE_OUTPUT_DIR=/app/output
       - DOWNLOADS_STORAGE_DIR=/app/output/downloads
-      - DOWNLOADS_BASE_URL=${DOWNLOADS_BASE_URL:-http://localhost:8000}
+      - DOWNLOADS_BASE_URL=${DOWNLOADS_BASE_URL:-http://localhost:80}
       - DOWNLOADS_URL_PATH=/static/downloads
       - DOWNLOADS_EXPIRES_IN=86400
       - DOWNLOADS_DISK_SPACE_THRESHOLD=80

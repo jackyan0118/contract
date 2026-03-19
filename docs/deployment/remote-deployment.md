@@ -7,8 +7,8 @@
 | 服务器 IP | 192.168.20.162 |
 | SSH 用户 | root |
 | 应用目录 | /opt/contract-app |
-| 镜像名称 | docker-app:latest |
-| 服务端口 | 8000 |
+| 镜像名称 | docker-app:latest + nginx:alpine |
+| 服务端口 | 80 (HTTP), 443 (HTTPS) |
 
 ---
 
@@ -27,10 +27,11 @@ docker build -f deploy/docker/Dockerfile -t docker-app:latest .
 ```
 
 ### 推送脚本功能
-- 导出镜像为 tar 文件
+- 构建 nginx amd64 镜像（适配远程 x86_64 服务器）
+- 导出镜像为 tar.gz 文件（压缩传输）
 - 复制到远程服务器
-- 加载镜像
-- 清理本地临时文件
+- 加载镜像并打标签
+- 清理临时文件
 
 ---
 
@@ -41,7 +42,7 @@ docker build -f deploy/docker/Dockerfile -t docker-app:latest .
 ```bash
 ssh root@192.168.20.162
 cd /opt/contract-app
-docker-compose up -d
+docker-compose -f docker-compose.remote.yml up -d
 ```
 
 ### 查看状态
@@ -88,20 +89,20 @@ docker-compose up -d
 
 | 项目 | 值 |
 |------|-----|
-| 基础 URL | http://192.168.20.162:8000 |
-| API 文档 | http://192.168.20.162:8000/docs |
+| 基础 URL | http://192.168.20.162 |
+| API 文档 | http://192.168.20.162/docs |
 | API Key | sk_prod_20260317_a1b2c3d4e5f6 |
 
 ### 健康检查
 
 ```bash
-curl http://192.168.20.162:8000/api/v1/health
+curl http://192.168.20.162/api/v1/health
 ```
 
 ### 生成文档
 
 ```bash
-curl -X POST http://192.168.20.162:8000/api/v1/generate \
+curl -X POST http://192.168.20.162/api/v1/generate \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk_prod_20260317_a1b2c3d4e5f6" \
   -d '{"wybs": "2026030006"}'
@@ -110,7 +111,7 @@ curl -X POST http://192.168.20.162:8000/api/v1/generate \
 ### 获取模板列表
 
 ```bash
-curl http://192.168.20.162:8000/api/v1/templates \
+curl http://192.168.20.162/api/v1/templates \
   -H "Authorization: Bearer sk_prod_20260317_a1b2c3d4e5f6"
 ```
 
@@ -138,7 +139,7 @@ curl http://192.168.20.162:8000/api/v1/templates \
 | SECURITY_API_KEYS | API 密钥列表 | [{"key":"xxx","name":"生产","enabled":true}] |
 | LOGGING_LEVEL | 日志级别 | INFO |
 | TEMPLATE_PATH | 模板目录 | config/templates |
-| DOWNLOADS_BASE_URL | 下载基础 URL | http://192.168.20.162:8000 |
+| DOWNLOADS_BASE_URL | 下载基础 URL | http://192.168.20.162 |
 
 ### 修改配置
 

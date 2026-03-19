@@ -2,8 +2,8 @@ services:
   app:
     image: docker-app:latest
     container_name: contract-app
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./config:/app/config:ro
       - contract-output:/app/output
@@ -20,10 +20,7 @@ services:
       - TEMPLATE_PATH=${TEMPLATE_PATH:-config/templates}
       - TEMPLATE_OUTPUT_DIR=/app/output
       - DOWNLOADS_STORAGE_DIR=/app/output/downloads
-      - DOWNLOADS_BASE_URL=${DOWNLOADS_BASE_URL:-http://192.168.20.162:8000}
       - DOWNLOADS_URL_PATH=/static/downloads
-      - DOWNLOADS_EXPIRES_IN=86400
-      - DOWNLOADS_DISK_SPACE_THRESHOLD=80
       - SECURITY_API_KEYS=${SECURITY_API_KEYS}
       - ORACLE_INSTANT_CLIENT=/opt/oracle/instantclient
     env_file:
@@ -37,6 +34,22 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  nginx:
+    image: nginx:alpine
+    container_name: contract-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - contract-output:/app/output:ro
+    networks:
+      - contract-network
+    depends_on:
+      - app
+    restart: always
 
 networks:
   contract-network:
