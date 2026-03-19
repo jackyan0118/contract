@@ -174,6 +174,30 @@ class DownloadsSettings(BaseSettings):
     disk_space_threshold: int = Field(default=80, description="磁盘空间告警阈值（%）")
 
 
+class WeaverSettings(BaseSettings):
+    """泛微OA配置."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="WEAVER_",
+        env_file=".env",
+        extra="ignore",
+    )
+
+    hosts: list[str] = Field(
+        default_factory=lambda: ["172.16.14.6:8080", "172.16.14.19:8080"],
+        description="OA服务器地址列表"
+    )
+    active_host_index: int = Field(default=0, description="当前使用的服务器索引")
+    system_id: str = Field(
+        default="SalesContract_PriceUrl_Update",
+        description="系统标识"
+    )
+    password: str = Field(default="weaver2025", description="MD5签名密码")
+    operator_id: str = Field(default="5288", description="默认操作人ID")
+    timeout: int = Field(default=30, description="请求超时（秒）")
+    retry_count: int = Field(default=3, description="重试次数")
+
+
 class Settings(BaseSettings):
     """聚合配置."""
 
@@ -189,6 +213,7 @@ class Settings(BaseSettings):
     downloads: DownloadsSettings = Field(default_factory=DownloadsSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
     rate_limit: RateLimitSettings = Field(default_factory=RateLimitSettings)
+    weaver: WeaverSettings = Field(default_factory=WeaverSettings)
 
     @classmethod
     def load_from_yaml(cls, yaml_path: str) -> "Settings":
@@ -203,6 +228,7 @@ class Settings(BaseSettings):
             template=TemplateSettings(**data.get("template", {})),
             security=SecuritySettings(**data.get("security", {})),
             rate_limit=RateLimitSettings(**data.get("rate_limit", {})),
+            weaver=WeaverSettings(**data.get("weaver", {})),
         )
 
 

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from src.api.routes import batch, generate, health, tasks, templates
+from src.api.routes import batch, generate, health, tasks, templates, weaver
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -12,3 +12,4 @@ api_router.include_router(templates.router, tags=["templates"])
 api_router.include_router(generate.router, tags=["generate"])
 api_router.include_router(batch.router, tags=["batch"])
 api_router.include_router(tasks.router, tags=["tasks"])
+api_router.include_router(weaver.router, tags=["weaver"])

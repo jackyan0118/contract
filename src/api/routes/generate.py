@@ -26,6 +26,7 @@ from src.models.template_rule import TemplateRule
 from src.queries.quotation import get_quotation_by_wybs
 from src.queries.quotation_detail import get_quotation_details
 from src.services.rule_loader import RuleLoader
+from src.services.weaver_service import WeaverService
 from src.transformers.data_transformer import get_transformer
 from src.utils.file_packer import FilePacker
 from src.utils.file_cleaner import FileCleaner
@@ -233,6 +234,26 @@ async def generate_document(
         relative_path = f"{date_dir}/{Path(zip_path).name}"
         download_url = f"{settings.downloads.url_path}/{relative_path}"
         full_download_url = f"{settings.downloads.base_url}{download_url}"
+
+        # OA回写（如果启用）
+        weaver_result = None
+        if request.weaver_enabled:
+            try:
+                weaver_service = WeaverService(settings.weaver)
+                weaver_result = await weaver_service.write_attachment(
+                    jgqdbh=wybs,
+                    file_url=full_download_url,
+                    filename=Path(zip_path).name,
+                    operator_id=request.weaver_operator_id
+                )
+                await weaver_service.close()
+
+                if not weaver_result.get("success"):
+                    logger.warning(f"OA回写失败: {weaver_result.get('message')}")
+                else:
+                    logger.info(f"OA回写成功: billid={weaver_result.get('billid')}")
+            except Exception as e:
+                logger.error(f"OA回写异常: {e}")
 
         # 返回数据
         data = GenerateSuccessData(
