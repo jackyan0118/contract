@@ -24,6 +24,11 @@ services:
       - DOWNLOADS_BASE_URL=http://192.168.20.162:8000
       - SECURITY_API_KEYS=${SECURITY_API_KEYS}
       - ORACLE_INSTANT_CLIENT=/opt/oracle/instantclient
+      - WEAVER_ENABLED=${WEAVER_ENABLED:-true}
+      - WEAVER_SYSTEM_ID=${WEAVER_SYSTEM_ID:-SalesContract_PriceUrl_Update}
+      - WEAVER_PASSWORD=${WEAVER_PASSWORD:-weaver2025}
+      - WEAVER_OPERATOR_ID=${WEAVER_OPERATOR_ID:-5288}
+      - WEAVER_HOSTS=${WEAVER_HOSTS:-["172.16.14.6:8080","172.16.14.19:8080"]}
     env_file:
       - .env
     networks:

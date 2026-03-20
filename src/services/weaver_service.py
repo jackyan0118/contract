@@ -3,12 +3,16 @@
 """
 
 import hashlib
+import json
 import time
 from typing import Optional
 
 import httpx
 
 from src.config.settings import WeaverSettings
+from src.utils.logger import get_logger
+
+logger = get_logger("services.weaver")
 
 
 class WeaverService:
@@ -118,11 +122,11 @@ class WeaverService:
         last_error = None
         for host in self.settings.hosts:
             try:
-                url = f"http://{host}/api/cube/restful/interface/saveOrUpdateModeData/SalesContract_PriceUrl_Update"
+                url = f"http://{host}/api/cube/restful/interface/saveOrUpdateModeData/{self.settings.system_id}"
 
                 response = await client.post(
                     url,
-                    data={"datajson": str(request_body)},
+                    data={"datajson": json.dumps(request_body, ensure_ascii=False)},
                     headers={"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"}
                 )
 
@@ -131,7 +135,6 @@ class WeaverService:
                 # 处理响应格式
                 if isinstance(result, str):
                     # 如果返回的是字符串，尝试解析
-                    import json
                     try:
                         result = json.loads(result)
                     except:
@@ -142,13 +145,13 @@ class WeaverService:
                         }
 
                 status = result.get("status")
+                logger.info(f"OA响应: status={status}, result={result}")
 
                 if status == "1":
                     # 解析datajson字段获取billid
                     billid = None
                     datajson_str = result.get("datajson", "")
                     if datajson_str:
-                        import json
                         try:
                             datajson = json.loads(datajson_str)
                             if isinstance(datajson, dict):
@@ -165,10 +168,13 @@ class WeaverService:
                         "message": "回写成功"
                     }
                 else:
+                    # 状态不是1时，打印详细响应以便排查
+                    message = result.get("message", "")
+                    logger.error(f"OA回写失败: status={status}, message={message}, result={result}")
                     return {
                         "success": False,
                         "status": status,
-                        "message": f"OA返回异常状态: {status}"
+                        "message": f"OA返回异常状态: {status}, message: {message}"
                     }
 
             except Exception as e:

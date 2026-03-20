@@ -33,6 +33,9 @@ TEST_OPERATOR_ID = "5288"       # 操作人ID
 # 价格附件URL（替换为实际生成的URL）
 TEST_PRICE_URL = "https://biaoxun.skhb.com:7990/xxx.pdf"
 
+# Cookie认证（可选）
+OA_COOKIE = None
+
 
 def generate_md5(data: str) -> str:
     """生成MD5值"""
