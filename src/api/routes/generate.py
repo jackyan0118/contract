@@ -4,8 +4,9 @@ import os
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from src.api.dependencies.file import get_output_dir
 from src.api.middleware.auth import verify_api_key
@@ -37,15 +38,10 @@ logger = get_logger("api.routes.generate")
 router = APIRouter()
 
 
-@router.post("/generate", response_model=ApiResponse[GenerateSuccessData])
-async def generate_document(
+async def _do_generate_document(
     request: GenerateRequest,
-    user: str = Depends(verify_api_key),
 ) -> ApiResponse[GenerateSuccessData]:
-    """单文件生成接口
-
-    根据报价单号生成价格附件文档，返回下载 URL 的 ZIP 压缩包。
-    """
+    """执行文档生成的内部逻辑"""
     wybs = request.wybs
 
     try:
@@ -237,14 +233,18 @@ async def generate_document(
 
         # OA回写（如果启用）
         weaver_result = None
-        if request.weaver_enabled:
+        # 使用请求值或settings中的默认值
+        weaver_enabled = request.weaver_enabled if request.weaver_enabled is not None else settings.weaver.enabled
+        if weaver_enabled:
             try:
                 weaver_service = WeaverService(settings.weaver)
+                # 使用请求值或settings中的默认值
+                operator_id = request.weaver_operator_id or settings.weaver.operator_id
                 weaver_result = await weaver_service.write_attachment(
                     jgqdbh=wybs,
                     file_url=full_download_url,
                     filename=Path(zip_path).name,
-                    operator_id=request.weaver_operator_id
+                    operator_id=operator_id
                 )
                 await weaver_service.close()
 
@@ -289,3 +289,37 @@ async def generate_document(
                 "message": "文档生成失败，请稍后重试",
             },
         )
+
+
+@router.post("/generate", response_model=ApiResponse[GenerateSuccessData])
+async def generate_document(
+    request: GenerateRequest,
+    user: str = Depends(verify_api_key),
+) -> ApiResponse[GenerateSuccessData]:
+    """单文件生成接口 (POST)
+
+    根据报价单号生成价格附件文档，返回下载 URL 的 ZIP 压缩包。
+    请求体格式: {"wybs": "xxx", "weaver_enabled": true, "weaver_operator_id": "xxx"}
+    """
+    return await _do_generate_document(request)
+
+
+@router.get("/generate", response_model=ApiResponse[GenerateSuccessData])
+async def generate_document_get(
+    wybs: str = Query(..., description="报价单号", min_length=1, max_length=50, pattern=r"^[A-Z0-9_-]+$"),
+    weaver_enabled: Optional[bool] = Query(None, description="是否启用OA回写"),
+    weaver_operator_id: Optional[str] = Query(None, description="OA操作人ID"),
+    user: str = Depends(verify_api_key),
+) -> ApiResponse[GenerateSuccessData]:
+    """单文件生成接口 (GET)
+
+    根据报价单号生成价格附件文档，返回下载 URL 的 ZIP 压缩包。
+
+    示例: /api/generate?wybs=XXXX&weaver_enabled=true&weaver_operator_id=5288
+    """
+    request = GenerateRequest(
+        wybs=wybs,
+        weaver_enabled=weaver_enabled,
+        weaver_operator_id=weaver_operator_id,
+    )
+    return await _do_generate_document(request)

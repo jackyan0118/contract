@@ -183,6 +183,7 @@ class WeaverSettings(BaseSettings):
         extra="ignore",
     )
 
+    enabled: bool = Field(default=False, description="是否启用OA回写")
     hosts: list[str] = Field(
         default_factory=lambda: ["172.16.14.6:8080", "172.16.14.19:8080"],
         description="OA服务器地址列表"

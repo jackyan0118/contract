@@ -56,7 +56,7 @@ class GenerateRequest(BaseModel):
         pattern=r"^[A-Z0-9_-]+$",
         description="报价单号",
     )
-    weaver_enabled: bool = Field(default=False, description="是否启用OA回写")
+    weaver_enabled: Optional[bool] = Field(default=None, description="是否启用OA回写")
     weaver_operator_id: Optional[str] = Field(default=None, description="OA操作人ID")
 
     @field_validator("wybs")
