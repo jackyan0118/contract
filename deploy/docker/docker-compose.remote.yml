@@ -29,6 +29,7 @@ services:
       - WEAVER_PASSWORD=${WEAVER_PASSWORD:-weaver2025}
       - WEAVER_OPERATOR_ID=${WEAVER_OPERATOR_ID:-5288}
       - WEAVER_HOSTS=${WEAVER_HOSTS:-["172.16.14.6:8080","172.16.14.19:8080"]}
+      - TZ=Asia/Shanghai
     env_file:
       - .env
     networks:
