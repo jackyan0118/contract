@@ -136,6 +136,7 @@ class SecuritySettings(BaseSettings):
         extra="ignore",
     )
 
+    enabled: bool = Field(default=True, description="是否启用API认证")
     api_keys: list[dict] = Field(default_factory=list, description="API Key 列表")
 
 

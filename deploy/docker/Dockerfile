@@ -18,7 +18,7 @@ COPY pyproject.toml ./
 COPY requirements.txt ./
 COPY src ./src
 COPY config ./config
-COPY deploy/docker/instantclient_21_19 ./instantclient_21_19
+COPY deploy/docker/instantclient_11_2 ./instantclient_11_2
 
 # 安装 Python 依赖
 RUN pip install --no-cache-dir --user --upgrade pip && \
@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制 Oracle Instant Client（本地已解压）
-COPY --from=builder /app/instantclient_21_19 /opt/oracle/instantclient
+COPY --from=builder /app/instantclient_11_2 /opt/oracle/instantclient
 
 # 复制 Python 依赖
 COPY --from=builder /root/.local /root/.local

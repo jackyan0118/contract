@@ -63,6 +63,10 @@ async def verify_api_key(request: Request, authorization: Optional[str] = Depend
     """验证 API Key 依赖"""
     settings = get_settings()
 
+    # API 认证未启用时跳过验证
+    if not settings.security.enabled:
+        return "auth_disabled_user"
+
     # Debug 模式下跳过认证（仅用于开发调试）
     if settings.app.debug:
         return "debug_user"

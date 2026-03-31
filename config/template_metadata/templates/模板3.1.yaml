@@ -55,8 +55,7 @@ table:
       type: currency
       decimal_places: 2
 paragraph_placeholders:
-  标题:
-    value: 肾功和心肌酶通用生化产品供货价
+  标题: 肾功和心肌酶通用生化产品供货价
   金额单位: 元
 speeches:
 - id: 话术1
