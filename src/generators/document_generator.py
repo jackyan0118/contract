@@ -18,7 +18,6 @@ from src.fillers.speech_processor import SpeechProcessor, Speech
 from src.fillers.constants import DEFAULT_SPEECH_VARIABLES, HEADER_TO_FIELD
 from src.config.template_loader import TemplateLoader, TemplateMetadataModel, ColumnType
 from src.models.template_rule import TemplateRule
-from src.exceptions import DocumentGenerateException
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class GenerationResult:
     """生成结果"""
+
     success: bool
     file_path: Optional[str] = None
     template_id: Optional[str] = None
@@ -35,8 +35,11 @@ class GenerationResult:
 class DocumentGenerator:
     """文档生成器"""
 
-    def __init__(self, template_dir: str = "templates",
-                 config_dir: str = "config/template_metadata/templates"):
+    def __init__(
+        self,
+        template_dir: str = "templates",
+        config_dir: str = "config/template_metadata/templates",
+    ):
         self.template_dir = Path(template_dir)
         self.config_dir = Path(config_dir)
         self.template_reader = WordTemplateReader(template_dir)
@@ -52,7 +55,7 @@ class DocumentGenerator:
         quote_data: Dict[str, Any],
         detail_data_list: List[Dict[str, Any]],
         output_dir: str = "output",
-        wybs: str = None
+        wybs: str = None,
     ) -> GenerationResult:
         """生成文档
 
@@ -92,14 +95,21 @@ class DocumentGenerator:
                 return GenerationResult(
                     success=False,
                     template_id=template.id,
-                    error=f"Template file not found: {template.file}"
+                    error=f"Template file not found: {template.file}",
                 )
 
             # 复制模板到输出目录（按报价单号组织目录结构）
             if wybs:
-                output_path = Path(output_dir) / wybs / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+                output_path = (
+                    Path(output_dir)
+                    / wybs
+                    / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+                )
             else:
-                output_path = Path(output_dir) / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+                output_path = (
+                    Path(output_dir)
+                    / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
+                )
             output_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy(template_path, output_path)
 
@@ -115,27 +125,22 @@ class DocumentGenerator:
             logger.info(f"Generated document: {output_path}")
 
             return GenerationResult(
-                success=True,
-                file_path=str(output_path),
-                template_id=template.id
+                success=True, file_path=str(output_path), template_id=template.id
             )
 
         except Exception as e:
             logger.error(f"Failed to generate document: {e}")
             import traceback
+
             logger.error(traceback.format_exc())
-            return GenerationResult(
-                success=False,
-                template_id=template.id,
-                error=str(e)
-            )
+            return GenerationResult(success=False, template_id=template.id, error=str(e))
 
     def _fill_document(
         self,
         doc: Document,
         template_config: Optional[TemplateMetadataModel],
         quote_data: Dict[str, Any],
-        detail_data_list: List[Dict[str, Any]]
+        detail_data_list: List[Dict[str, Any]],
     ) -> None:
         """填充文档内容
 
@@ -151,15 +156,15 @@ class DocumentGenerator:
         # 2. 填充表格（支持 detail_filter）
         self._fill_tables(doc, template_config, detail_data_list, quote_data)
 
-        # 3. 处理话术（完整集成）
-        self._process_speeches(doc, template_config, quote_data)
+        # 3. 处理话术（完整集成）- 传递明细数据用于话术条件判断
+        self._process_speeches(doc, template_config, detail_data_list)
 
         # 4. 修复表格列宽：将 autofit 改为 fixed，防止 WPS 渲染时列宽随内容变化
         self._fix_table_layout(doc)
 
-    def _fill_paragraphs(self, doc: Document,
-                         template_config: Optional[TemplateMetadataModel],
-                         data: Dict[str, Any]) -> None:
+    def _fill_paragraphs(
+        self, doc: Document, template_config: Optional[TemplateMetadataModel], data: Dict[str, Any]
+    ) -> None:
         """填充段落占位符
 
         Args:
@@ -198,10 +203,13 @@ class DocumentGenerator:
                 if para.runs:
                     para.runs[0].text = text
 
-    def _fill_tables(self, doc: Document,
-                     template_config: Optional[TemplateMetadataModel],
-                     data_list: List[Dict[str, Any]],
-                     quote_data: Dict[str, Any] = None) -> None:
+    def _fill_tables(
+        self,
+        doc: Document,
+        template_config: Optional[TemplateMetadataModel],
+        data_list: List[Dict[str, Any]],
+        quote_data: Dict[str, Any] = None,
+    ) -> None:
         """填充表格
 
         Args:
@@ -233,7 +241,9 @@ class DocumentGenerator:
                     # 清除标记文本
                     for cell in row.cells:
                         for para in cell.paragraphs:
-                            para.text = para.text.replace("{{#明细表}}", "").replace("{{/明细表}}", "")
+                            para.text = para.text.replace("{{#明细表}}", "").replace(
+                                "{{/明细表}}", ""
+                            )
 
                 # 检查是否是话术行
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
@@ -247,7 +257,12 @@ class DocumentGenerator:
                         speech_row_content.append(cell_text)
 
             # 如果没有找到 {{#明细表}} 占位符，但模板配置了 table.columns，则也视为明细表
-            if not is_detail_table and template_config and template_config.table and template_config.table.columns:
+            if (
+                not is_detail_table
+                and template_config
+                and template_config.table
+                and template_config.table.columns
+            ):
                 is_detail_table = True
                 # 假设第一行是表头，最后一行是话术行或空行
                 template_row_idx = 1  # 从第1行开始填充数据
@@ -280,14 +295,26 @@ class DocumentGenerator:
             has_speech_row = speech_row_content is not None
 
             # 调试：检查过滤后的数据
-            logger.info(f"filtered_data count: {len(filtered_data)}, grouped_data count: {len(grouped_data)}, columns[0]: {columns[0] if columns else 'empty'}, template_row_idx: {template_row_idx}")
+            logger.info(
+                f"filtered_data count: {len(filtered_data)}, grouped_data count: {len(grouped_data)}, columns[0]: {columns[0] if columns else 'empty'}, template_row_idx: {template_row_idx}"
+            )
 
             # 获取折扣话术模板
             discount_template = template_config.discount_template if template_config else None
-            self.row_expander.expand(table, grouped_data, columns, template_row_idx, template_row_idx, True, has_speech_row, merge_info, discount_template)
+            self.row_expander.expand(
+                table,
+                grouped_data,
+                columns,
+                template_row_idx,
+                template_row_idx,
+                True,
+                has_speech_row,
+                merge_info,
+                discount_template,
+            )
 
             # 获取话术内容
-            speech_contents = self._get_speech_contents(template_config, quote_data)
+            speech_contents = self._get_speech_contents(template_config, data_list)
             full_speech = "\n".join(speech_contents)
 
             # 替换变量占位符
@@ -312,14 +339,18 @@ class DocumentGenerator:
 
                     # 修改 Cell 0 - 保留 "其他"，移除占位符
                     cell0 = row.cells[0]
-                    cell0_text = cell0.text.replace("{{#话术}}", "").replace("{{/话术}}", "").replace("{{话术}}", "")
+                    cell0_text = (
+                        cell0.text.replace("{{#话术}}", "")
+                        .replace("{{/话术}}", "")
+                        .replace("{{话术}}", "")
+                    )
                     cell0.text = cell0_text if cell0_text else "其他"
 
                     # Cell 2-6 不需要修改，因为它们是虚拟单元格
 
-    def _apply_product_matching(self,
-                                template_config: Optional[TemplateMetadataModel],
-                                data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _apply_product_matching(
+        self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """应用产品匹配规则进行去重
 
         使用product_matching配置的标准产品列表进行匹配：
@@ -354,31 +385,29 @@ class DocumentGenerator:
         for wlms in product_map.keys():
             # 查找匹配的品名
             for item in data_list:
-                item_wlms = item.get('WLMS', '')
+                item_wlms = item.get("WLMS", "")
                 if item_wlms == wlms:
                     # 添加标准产品
-                    result.append({
-                        **item,
-                        '_matched_product': wlms,
-                        '_seq': product_map[wlms]
-                    })
+                    result.append({**item, "_matched_product": wlms, "_seq": product_map[wlms]})
                     seen_standard.add(wlms)
                     break
 
         # 添加未匹配的产品作为"其他"
         unmatched = []
         for item in data_list:
-            item_wlms = item.get('WLMS', '')
+            item_wlms = item.get("WLMS", "")
             if item_wlms not in seen_standard:
-                unmatched.append({
-                    **item,
-                    '_matched_product': item_wlms,  # 保留原品名
-                    '_seq': 999  # 未匹配的放最后
-                })
+                unmatched.append(
+                    {
+                        **item,
+                        "_matched_product": item_wlms,  # 保留原品名
+                        "_seq": 999,  # 未匹配的放最后
+                    }
+                )
 
         # 按序号排序
         result.extend(unmatched)
-        result.sort(key=lambda x: x.get('_seq', 999))
+        result.sort(key=lambda x: x.get("_seq", 999))
 
         logger.info(f"Product matching: {len(data_list)} -> {len(result)} items")
 
@@ -402,16 +431,16 @@ class DocumentGenerator:
 
         # 为每条数据计算折扣率
         for item in data_list:
-            jcjxj = item.get('JCJXJ')
-            jczbj = item.get('JCZBJ')
+            jcjxj = item.get("JCJXJ")
+            jczbj = item.get("JCZBJ")
             if jcjxj and jczbj and float(jczbj) > 0:
                 discount = round(float(jcjxj) / float(jczbj) * 100)
-                item['_discount'] = discount
+                item["_discount"] = discount
             else:
-                item['_discount'] = None
+                item["_discount"] = None
 
         # 按折扣率排序（None放在最后）
-        sorted_data = sorted(data_list, key=lambda x: (x['_discount'] is None, x['_discount'] or 0))
+        sorted_data = sorted(data_list, key=lambda x: (x["_discount"] is None, x["_discount"] or 0))
 
         # 计算合并信息，并添加组内序号
         merge_info = {}
@@ -421,7 +450,7 @@ class DocumentGenerator:
         group_index = 0  # 组内序号
 
         for idx, item in enumerate(sorted_data):
-            discount = item.get('_discount')
+            discount = item.get("_discount")
             if discount != current_discount:
                 # 保存之前的合并信息
                 if current_discount is not None and span_count > 1:
@@ -436,7 +465,7 @@ class DocumentGenerator:
                 group_index += 1
 
             # 设置组内序号
-            item['_group_index'] = group_index
+            item["_group_index"] = group_index
 
         # 保存最后一组的合并信息
         if current_discount is not None and span_count > 1:
@@ -446,9 +475,9 @@ class DocumentGenerator:
 
         return sorted_data, merge_info
 
-    def _apply_detail_filter(self,
-                            template_config: Optional[TemplateMetadataModel],
-                            data_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _apply_detail_filter(
+        self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """应用明细过滤规则
 
         Args:
@@ -458,7 +487,9 @@ class DocumentGenerator:
         Returns:
             过滤后的数据列表
         """
-        logger.info(f"Applying detail filter, template_config: {template_config is not None}, detail_filter: {template_config.detail_filter if template_config else None}")
+        logger.info(
+            f"Applying detail filter, template_config: {template_config is not None}, detail_filter: {template_config.detail_filter if template_config else None}"
+        )
 
         if not template_config or not template_config.detail_filter:
             logger.info("No detail filter configured, returning all data")
@@ -479,12 +510,14 @@ class DocumentGenerator:
             # 组内条件（AND 关系）
             group_conditions = []
             for cond in rule.conditions:
-                group_conditions.append(FilterCondition(
-                    field=cond.field,
-                    operator=cond.operator,
-                    value=cond.value,
-                    value_type=cond.value_type
-                ))
+                group_conditions.append(
+                    FilterCondition(
+                        field=cond.field,
+                        operator=cond.operator,
+                        value=cond.value,
+                        value_type=cond.value_type,
+                    )
+                )
 
             if group_conditions:
                 # 过滤符合该组条件的数据
@@ -495,7 +528,7 @@ class DocumentGenerator:
         seen = set()
         unique_filtered = []
         for item in all_filtered:
-            key = item.get('WLDM') or item.get('ID') or id(item)
+            key = item.get("WLDM") or item.get("ID") or id(item)
             if key not in seen:
                 seen.add(key)
                 unique_filtered.append(item)
@@ -518,13 +551,15 @@ class DocumentGenerator:
         for col in table_config.columns:
             # auto_number 类型不需要 source_field
             field = col.source_field if col.type != ColumnType.AUTO_NUMBER else ""
-            columns.append({
-                "name": col.name,
-                "field": field,
-                "type": col.type,
-                "transform": col.transform,
-                "params": col.params
-            })
+            columns.append(
+                {
+                    "name": col.name,
+                    "field": field,
+                    "type": col.type,
+                    "transform": col.transform,
+                    "params": col.params,
+                }
+            )
         return columns
 
     def _parse_table_columns(self, table) -> List[Dict[str, str]]:
@@ -540,17 +575,13 @@ class DocumentGenerator:
         for idx, cell in enumerate(header_row.cells):
             text = cell.text.strip()
             # 移除占位符标记
-            text = re.sub(r'\{\{.*\}\}', '', text).strip()
+            text = re.sub(r"\{\{.*\}\}", "", text).strip()
 
             # 推断字段
             field = self._infer_field(text, idx)
             col_type = "auto_number" if "序号" in text else "text"
 
-            columns.append({
-                "name": text,
-                "field": field,
-                "type": col_type
-            })
+            columns.append({"name": text, "field": field, "type": col_type})
 
         return columns
 
@@ -586,22 +617,28 @@ class DocumentGenerator:
         """
         for table in doc.tables:
             tbl = table._tbl
-            tblPr = tbl.find('.//{*}tblPr')
+            tblPr = tbl.find(".//{*}tblPr")
             if tblPr is not None:
-                tblLayout = tblPr.find('.//{*}tblLayout')
+                tblLayout = tblPr.find(".//{*}tblLayout")
                 if tblLayout is not None:
                     # 将 autofit 改为 fixed
-                    tblLayout.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type', 'fixed')
+                    tblLayout.set(
+                        "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type",
+                        "fixed",
+                    )
 
-    def _process_speeches(self, doc: Document,
-                         template_config: Optional[TemplateMetadataModel],
-                         data: Dict[str, Any]) -> None:
+    def _process_speeches(
+        self,
+        doc: Document,
+        template_config: Optional[TemplateMetadataModel],
+        detail_data_list: List[Dict[str, Any]],
+    ) -> None:
         """处理话术占位符（完整集成）
 
         Args:
             doc: Word 文档对象
             template_config: 模板配置（可选）
-            data: 数据字典
+            detail_data_list: 明细数据列表（用于话术条件判断）
         """
         # 如果没有模板配置，简化处理
         if not template_config or not template_config.speeches:
@@ -617,13 +654,15 @@ class DocumentGenerator:
                 content=s.content,
                 mutex_group=s.mutex_group,
                 variables={v.name: v.default for v in s.variables},
-                conditions=[FilterCondition(field=c.field, operator=c.operator, value=c.value)
-                          for c in s.conditions]
+                conditions=[
+                    FilterCondition(field=c.field, operator=c.operator, value=c.value)
+                    for c in s.conditions
+                ],
             )
             speeches.append(speech)
 
-        # 处理话术
-        speech_contents = self.speech_processor.process_speeches(speeches, data)
+        # 处理话术 - 传递明细数据列表用于条件判断
+        speech_contents = self.speech_processor.process_speeches(speeches, detail_data_list)
 
         # 填充话术占位符
         for para in doc.paragraphs:
@@ -687,13 +726,13 @@ class DocumentGenerator:
     def _get_speech_contents(
         self,
         template_config: Optional[TemplateMetadataModel],
-        data: Dict[str, Any]
+        detail_data_list: List[Dict[str, Any]],
     ) -> List[str]:
         """获取话术内容列表
 
         Args:
             template_config: 模板配置（可选）
-            data: 数据字典
+            detail_data_list: 明细数据列表（用于话术条件判断）
 
         Returns:
             话术内容列表
@@ -711,13 +750,15 @@ class DocumentGenerator:
                 content=s.content,
                 mutex_group=s.mutex_group,
                 variables={v.name: v.default for v in s.variables},
-                conditions=[FilterCondition(field=c.field, operator=c.operator, value=c.value)
-                          for c in s.conditions]
+                conditions=[
+                    FilterCondition(field=c.field, operator=c.operator, value=c.value)
+                    for c in s.conditions
+                ],
             )
             speeches.append(speech)
 
-        # 处理话术
-        speech_contents = self.speech_processor.process_speeches(speeches, data)
+        # 处理话术 - 传递明细数据列表用于条件判断
+        speech_contents = self.speech_processor.process_speeches(speeches, detail_data_list)
         return speech_contents
 
 
@@ -732,7 +773,7 @@ class MultiDocumentGenerator:
         templates: List[TemplateRule],
         quote_data: Dict[str, Any],
         detail_data_list: List[Dict[str, Any]],
-        output_dir: str = "output"
+        output_dir: str = "output",
     ) -> List[GenerationResult]:
         """批量生成文档
 
@@ -748,9 +789,7 @@ class MultiDocumentGenerator:
         results = []
 
         for template in templates:
-            result = self.generator.generate(
-                template, quote_data, detail_data_list, output_dir
-            )
+            result = self.generator.generate(template, quote_data, detail_data_list, output_dir)
             results.append(result)
 
             if result.success:
@@ -759,33 +798,3 @@ class MultiDocumentGenerator:
                 logger.error(f"Failed: {result.template_id} -> {result.error}")
 
         return results
-        """获取话术内容列表
-
-        Args:
-            template_config: 模板配置（可选）
-            data: 数据字典
-
-        Returns:
-            话术内容列表
-        """
-        # 如果没有模板配置，返回空列表
-        if not template_config or not template_config.speeches:
-            return []
-
-        # 转换为 Speech 对象
-        speeches = []
-        for s in template_config.speeches:
-            speech = Speech(
-                id=s.id,
-                type=s.type,
-                content=s.content,
-                mutex_group=s.mutex_group,
-                variables={v.name: v.default for v in s.variables},
-                conditions=[FilterCondition(field=c.field, operator=c.operator, value=c.value)
-                          for c in s.conditions]
-            )
-            speeches.append(speech)
-
-        # 处理话术
-        speech_contents = self.speech_processor.process_speeches(speeches, data)
-        return speech_contents

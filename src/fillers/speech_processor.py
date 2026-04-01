@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 class SpeechType(str, Enum):
     """话术类型枚举"""
+
     CONDITIONAL = "conditional"
     FIXED = "fixed"
 
@@ -20,6 +21,7 @@ class SpeechType(str, Enum):
 @dataclass
 class Speech:
     """话术"""
+
     id: str
     content: str
     type: SpeechType = SpeechType.CONDITIONAL
@@ -38,15 +40,13 @@ class SpeechProcessor:
         self.data_filler = DataFiller()
 
     def process_speeches(
-        self,
-        speech_configs: List[Speech],
-        data: Dict[str, Any]
+        self, speech_configs: List[Speech], detail_data_list: List[Dict[str, Any]]
     ) -> List[str]:
         """处理话术列表
 
         Args:
             speech_configs: 话术配置列表
-            data: 数据字典
+            detail_data_list: 明细数据列表（用于话术条件判断）
 
         Returns:
             话术内容列表
@@ -56,12 +56,18 @@ class SpeechProcessor:
 
         results = []
         selected_in_group: Dict[str, Speech] = {}  # 互斥组已选择的话术
+        speech_index = 0  # 话术序号计数器
+        number_symbols = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
 
         # 遍历话术配置
         for speech in speech_configs:
             if speech.type == "fixed":
-                # 固定话术，直接添加
-                content = self._replace_speech_variables(speech.content, speech.variables, data)
+                # 固定话术，直接添加（不使用条件判断）
+                content = self._replace_speech_variables(speech.content, speech.variables, {})
+                # 添加序号前缀
+                if speech_index < len(number_symbols):
+                    content = f"{number_symbols[speech_index]} {content}"
+                speech_index += 1
                 results.append(content)
                 logger.debug(f"Added fixed speech: {speech.id}")
             elif speech.type == "conditional":
@@ -70,13 +76,18 @@ class SpeechProcessor:
                     # 检查是否已有同组话术被选中
                     if speech.mutex_group in selected_in_group:
                         # 已有话术，跳过当前话术
-                        logger.debug(f"Skipped {speech.id}: group {speech.mutex_group} already has speech")
+                        logger.debug(
+                            f"Skipped {speech.id}: group {speech.mutex_group} already has speech"
+                        )
                         continue
 
-                # 检查条件是否满足（这里简化处理，实际需要条件匹配）
-                # 如果没有条件，默认满足
-                if self._check_speech_conditions(speech, data):
-                    content = self._replace_speech_variables(speech.content, speech.variables, data)
+                # 检查条件是否满足：任意一条明细满足则匹配
+                if self._check_speech_conditions(speech, detail_data_list):
+                    content = self._replace_speech_variables(speech.content, speech.variables, {})
+                    # 添加序号前缀
+                    if speech_index < len(number_symbols):
+                        content = f"{number_symbols[speech_index]} {content}"
+                    speech_index += 1
                     results.append(content)
 
                     if speech.mutex_group:
@@ -88,27 +99,30 @@ class SpeechProcessor:
         return results
 
     def _check_speech_conditions(
-        self,
-        speech: Speech,
-        data: Dict[str, Any]
+        self, speech: Speech, detail_data_list: List[Dict[str, Any]]
     ) -> bool:
         """检查话术条件是否满足
 
-        简化实现：检查数据中是否包含话术ID对应的关键字
+        Args:
+            speech: 话术对象
+            detail_data_list: 明细数据列表
+
+        Returns:
+            任意一条明细满足条件则返回 True
         """
-        # 简化逻辑：如果话术没有明确条件配置，默认显示
-        # 实际应该根据 speech 中的 conditions 字段判断
-        if not hasattr(speech, 'conditions') or not speech.conditions:
+        # 如果话术没有明确条件配置，默认显示
+        if not hasattr(speech, "conditions") or not speech.conditions:
             return True
 
-        # 实际的条件检查
-        return self.data_filler.match_conditions(data, speech.conditions)
+        # 遍历明细数据，任意一条满足条件则匹配
+        for data in detail_data_list:
+            if self.data_filler.match_conditions(data, speech.conditions):
+                return True
+
+        return False
 
     def _replace_speech_variables(
-        self,
-        content: str,
-        variables: Dict[str, str],
-        data: Dict[str, Any]
+        self, content: str, variables: Dict[str, str], data: Dict[str, Any]
     ) -> str:
         """替换话术变量"""
         # 合并默认变量和自定义变量
@@ -125,17 +139,14 @@ class SpeechProcessor:
         return content
 
     def find_matching_speech(
-        self,
-        speeches: List[Speech],
-        mutex_group: str,
-        data: Dict[str, Any]
+        self, speeches: List[Speech], mutex_group: str, detail_data_list: List[Dict[str, Any]]
     ) -> Optional[Speech]:
         """查找匹配的话术（用于互斥组）
 
         Args:
             speeches: 话术列表
             mutex_group: 互斥组名称
-            data: 数据字典
+            detail_data_list: 明细数据列表
 
         Returns:
             匹配的话术或 None
@@ -144,7 +155,7 @@ class SpeechProcessor:
             if speech.mutex_group != mutex_group:
                 continue
 
-            if self._check_speech_conditions(speech, data):
+            if self._check_speech_conditions(speech, detail_data_list):
                 return speech
 
         return None

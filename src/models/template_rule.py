@@ -1,17 +1,17 @@
 """模板规则数据模型."""
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from pydantic import BaseModel, Field
 
 
 class RuleCondition(BaseModel):
     """匹配条件 - 所有字段为精确匹配（AND关系）"""
-    产品细分编号: Optional[str] = Field(default=None, description="产品细分编号")
-    产品细分: Optional[str] = Field(default=None, description="产品细分名称")
-    定价组编号: Optional[str] = Field(default=None, description="定价组编号")
-    定价组名称: Optional[str] = Field(default=None, description="定价组名称")
-    是否集采: Optional[str] = Field(default=None, description="是否集采: 0=是, 1=否")
-    供货价类型: Optional[str] = Field(default=None, description="供货价类型")
+    产品细分编号: Optional[Union[str, list]] = Field(default=None, description="产品细分编号，支持列表如['11','41']")
+    产品细分: Optional[Union[str, list]] = Field(default=None, description="产品细分名称")
+    定价组编号: Optional[Union[str, list]] = Field(default=None, description="定价组编号，支持列表")
+    定价组名称: Optional[Union[str, list]] = Field(default=None, description="定价组名称")
+    是否集采: Optional[Union[str, list]] = Field(default=None, description="是否集采: 0=是, 1=否")
+    供货价类型: Optional[Union[str, list]] = Field(default=None, description="供货价类型")
 
     def match(self, data: Dict[str, Any]) -> bool:
         """检查数据是否满足此条件
@@ -24,12 +24,22 @@ class RuleCondition(BaseModel):
         """
         for field, expected in self.model_dump(exclude_none=True).items():
             actual = data.get(field)
-            # 处理 None 值和不匹配的情况
+            # 处理 None 值
             if actual is None:
                 return False
-            # 统一转为字符串比较，过滤空格
-            if str(actual).strip() != str(expected).strip():
-                return False
+            # 统一转为字符串
+            actual_str = str(actual).strip()
+            expected_str = str(expected).strip()
+
+            # 支持列表多值匹配（如 ['11', '41']）
+            if isinstance(expected, (list, tuple)):
+                expected_strs = [str(v).strip() for v in expected]
+                if actual_str not in expected_strs:
+                    return False
+            else:
+                # 普通精确匹配
+                if actual_str != expected_str:
+                    return False
         return True
 
 

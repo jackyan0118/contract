@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from src.exceptions import ConfigException
+from src.exceptions import ConfigException, ErrorCode
 from src.models import Quotation, QuotationDetail, QuotationItem
 from src.queries import get_quotation_by_wybs, get_quotation_details
 from src.utils.logger import get_logger
@@ -55,7 +55,7 @@ class FieldMappingConfig:
         if not config_file.exists():
             raise ConfigException(
                 message=f"字段映射配置文件不存在: {self._config_path}",
-                error_code="CONFIG_NOT_FOUND",
+                error_code=ErrorCode.CONFIG_NOT_FOUND,
                 detail={"config_path": self._config_path},
             )
 
@@ -82,13 +82,13 @@ class FieldMappingConfig:
         except yaml.YAMLError as e:
             raise ConfigException(
                 message=f"字段映射配置文件解析失败: {e}",
-                error_code="CONFIG_VALIDATION_ERROR",
+                error_code=ErrorCode.CONFIG_VALIDATION_ERROR,
                 detail={"config_path": self._config_path, "error": str(e)},
             ) from e
         except Exception as e:
             raise ConfigException(
                 message=f"加载字段映射配置失败: {e}",
-                error_code="CONFIG_ERROR",
+                error_code=ErrorCode.CONFIG_ERROR,
                 detail={"config_path": self._config_path, "error": str(e)},
             ) from e
 

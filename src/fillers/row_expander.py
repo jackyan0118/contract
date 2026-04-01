@@ -372,15 +372,17 @@ class RowExpander:
             is_price_col = col_idx == len(columns) - 1
 
             if is_price_col:
-                # 供货价列：只在主单元格显示固定文本+折扣率，其他行隐藏
+                # 供货价列处理逻辑
                 if is_merge_start and discount_template:
+                    # 有折扣话术时，显示折扣率
                     discount = data.get('_discount')
                     if discount:
                         value = discount_template.format(discount=discount)
                     else:
                         value = ""
                 else:
-                    value = ""
+                    # 没有折扣话术时，正常显示供货价
+                    value = self._get_value(data, col_config, row_number)
             else:
                 value = self._get_value(data, col_config, row_number)
 

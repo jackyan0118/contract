@@ -1,124 +1,43 @@
+id: 模板2
+name: 通用生化产品价格模版
+file: 模板2：通用生化产品价格模版.docx
 category: 通用生化
+paragraph_placeholders:
+  标题: 通用生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '21'
-
     - field: LYXH
       operator: '='
       value: '2'
-    name: 物料生成来源2
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '21'
-
     - field: LYXH
       operator: '='
       value: '1'
-    - field: DJZMC
-      operator: contains
-      value: 特殊
-    name: 物料生成来源1-特殊定价组
+    - field: DJZ
+      operator: in
+      value:
+      - '14'
+      - '55'
+      - '89'
+      - '57'
+      - '70'
+      - '91'
+      - '92'
+      - 'A1'
+    - field: SFJC
+      operator: '='
+      value: '1'
   description: 通用生化试剂明细筛选
-file: 模板2：通用生化产品价格模版.docx
-id: 模板2
-match_conditions:
-  产品细分: 通用生化试剂
-name: 通用生化产品价格模版
-paragraph_placeholders:
-  标题: 通用生化产品供货价
-  金额单位: 元
-speeches:
-- conditions:
-  - field: DJZMC
-    operator: contains
-    value: 肝功
-  - field: SFJC
-    operator: '='
-    value: 1
-  - field: BNGHJLX
-    operator: '!='
-    value: 集采中标价
-  content: '其余肝功集采项目的通用生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【 {{肝功扣率}} 】%，前述试剂中标价格，以江西省医疗保障局发布的《关于公布肝功生化类检测试剂省际联盟集中带量采购中选结果的通知》（赣集采办字〔2023〕14号）中附件2.肝功生化类检测试剂省际联盟集中带量采购中选供应清单为准。
 
-    '
-  id: 话术1.1
-  mutex_group: A
-  name: 肝功集采话术(非中标价)
-  type: conditional
-  variables:
-  - default: '85'
-    name: 肝功扣率
-- conditions:
-  - field: DJZMC
-    operator: contains
-    value: 肝功
-  - field: SFJC
-    operator: '='
-    value: 1
-  - field: BNGHJLX
-    operator: '='
-    value: 集采中标价
-  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【 {{肝功扣率}} 】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。
-
-    '
-  id: 话术1.2
-  mutex_group: A
-  name: 肝功集采话术(中标价)
-  type: conditional
-  variables:
-  - default: '85'
-    name: 肝功扣率
-- conditions:
-  - field: DJZMC
-    operator: in
-    value:
-    - 肾功和心肌酶
-    - 江西糖代谢
-  - field: SFJC
-    operator: '='
-    value: 1
-  content: '除其他肾功和心肌酶生化类检测试剂外，其余的【通用生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品"单价"为准（即，供货价=甲方产品的零售价×【
-    {{通用扣率}} 】%；供货价计量单位四舍五入保留到分，下同）。
-
-    '
-  id: 话术2.1
-  mutex_group: B
-  name: 肾功心肌酶集采话术
-  type: conditional
-  variables:
-  - default: '70'
-    name: 通用扣率
-- conditions:
-  - field: SFJC
-    operator: '!='
-    value: 0
-  content: '【通用生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品"单价"为准（即，供货价=甲方产品的零售价×【
-    {{通用扣率}} 】%；供货价计量单位四舍五入保留到分，下同）。
-
-    '
-  id: 话术2.2
-  mutex_group: B
-  name: 非集采话术
-  type: conditional
-  variables:
-  - default: '70'
-    name: 通用扣率
-- content: '若产品供货价格无法按上表方法表述的，则需附详细价格表。
-
-    '
-  id: 话术3
-  name: 需附详细价格表
-  type: fixed
-- content: '新上市的产品价格另行通知。
-
-    '
-  id: 话术4
-  name: 新上市通知
-  type: fixed
 table:
   columns:
   - name: 序号
@@ -136,18 +55,108 @@ table:
   - name: 规格型号
     source_field: GG
     source_table: UF_HTJGKST_DT1
-  - format:
-      decimal_places: 2
-      type: currency
-    name: 零售价
+  - name: 零售价
     source_field: LSJ
     source_table: UF_HTJGKST_DT1
-  - format:
-      decimal_places: 2
-      type: currency
-    name: 供货价
+    transform: currency
+    params:
+      decimals: 2
+  - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
+    transform: currency
+    params:
+      decimals: 2
   placeholders:
     end: '{{/明细表}}'
     start: '{{#明细表}}'
+
+speeches:
+- id: 话术1.1
+  mutex_group: A
+  name: 肝功集采话术(非中标价)
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value:
+    - '39'
+    - '89'
+    - '86'
+    - '55'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  - field: BNGHJLXZ
+    operator: '!='
+    value: '8'
+  content: '其余肝功集采项目的通用生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【 {{肝功扣率}} 】%，前述试剂中标价格，以江西省医疗保障局发布的《关于公布肝功生化类检测试剂省际联盟集中带量采购中选结果的通知》（赣集采办字〔2023〕14号）中附件2.肝功生化类检测试剂省际联盟集中带量采购中选供应清单为准。'
+  variables:
+  - default: '85'
+    name: 肝功扣率
+- id: 话术1.2
+  mutex_group: A
+  name: 肝功集采话术(中标价)
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value:
+    - '39'
+    - '89'
+    - '86'
+    - '55'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  - field: BNGHJLXZ
+    operator: '='
+    value: '8'
+  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【 {{肝功扣率}} 】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。'
+  variables:
+  - default: '85'
+    name: 肝功扣率
+- id: 话术2.1
+  mutex_group: B
+  name: 肾功心肌酶集采话术
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value:
+    - '44'
+    - '69'
+    - '57'
+    - '70'
+    - '91'
+    - '92'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  content: '除其他肾功和心肌酶生化类检测试剂外，其余的【通用生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品"单价"为准（即，供货价=甲方产品的零售价×【 {{通用扣率}} 】%；供货价计量单位四舍五入保留到分，下同）。'
+  variables:
+  - default: '70'
+    name: 通用扣率
+- id: 话术2.2
+  mutex_group: B
+  name: 非集采话术
+  type: conditional
+  conditions:
+  - field: CPXF_BM
+    operator: '='
+    value: '21'
+  - field: SFJC
+    operator: '='
+    value: '1'
+  content: '【通用生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品"单价"为准（即，供货价=甲方产品的零售价×【 {{通用扣率}} 】%；供货价计量单位四舍五入保留到分，下同）。'
+  variables:
+  - default: '70'
+    name: 通用扣率
+- id: 话术3
+  name: 需附详细价格表
+  type: fixed
+  content: '若产品供货价格无法按上表方法表述的，则需附详细价格表。'
+- id: 话术4
+  name: 新上市通知
+  type: fixed
+  content: '新上市的产品价格另行通知。'

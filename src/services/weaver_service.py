@@ -4,7 +4,7 @@
 
 import hashlib
 import json
-import time
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import httpx
@@ -39,7 +39,8 @@ class WeaverService:
 
     def build_header(self) -> dict:
         """构建请求头"""
-        current_datetime = time.strftime("%Y%m%d%H%M%S")
+        china_tz = timezone(timedelta(hours=8))
+        current_datetime = datetime.now(china_tz).strftime("%Y%m%d%H%M%S")
         md5_string = self.settings.system_id + self.settings.password + current_datetime
         md5_value = hashlib.md5(md5_string.encode('utf-8')).hexdigest()
 
@@ -64,10 +65,12 @@ class WeaverService:
 
     def build_operation_info(self, operator_id: str) -> dict:
         """构建操作信息"""
+        china_tz = timezone(timedelta(hours=8))
+        now = datetime.now(china_tz)
         return {
-            "operationDate": time.strftime("%Y-%m-%d"),
+            "operationDate": now.strftime("%Y-%m-%d"),
             "operator": operator_id,
-            "operationTime": time.strftime("%H:%M:%S")
+            "operationTime": now.strftime("%H:%M:%S")
         }
 
     def build_request_body(

@@ -2,10 +2,10 @@ id: 模板1
 name: KHB、科华生物品牌酶免&胶体金产品供货价
 file: 模板1：KHB、科华生物品牌酶免&胶体金产品供货价.docx
 category: 酶免胶体金
-match_conditions:
-  产品细分:
-  - 酶免试剂
-  - 胶体金试剂
+paragraph_placeholders:
+  标题: KHB、科华生物品牌酶免&胶体金产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
@@ -14,9 +14,8 @@ detail_filter:
       value:
       - '11'
       - '41'
-
-    name: CPXF=酶免试剂
   description: 当产品细分为酶免试剂或胶体金试剂时
+
 table:
   placeholders:
     start: '{{#明细表}}'
@@ -46,17 +45,12 @@ table:
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
     description: 供货价_元
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  标题: KHB、科华生物品牌酶免&胶体金产品供货价
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+
 speeches:
 - id: 话术1
   name: 新上市通知
   type: fixed
-  position: after_table
-  content: '新上市的产品价格另行通知。
-
-    '
+  content: 新上市的产品价格另行通知。
