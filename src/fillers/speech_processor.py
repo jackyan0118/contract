@@ -59,13 +59,29 @@ class SpeechProcessor:
         speech_index = 0  # 话术序号计数器
         number_symbols = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
 
+        # 遍历话术配置，先计算最终会有多少条话术
+        temp_selected = {}
+        for speech in speech_configs:
+            if speech.type == "fixed":
+                continue
+            if speech.mutex_group:
+                if speech.mutex_group in temp_selected:
+                    continue
+            if self._check_speech_conditions(speech, detail_data_list):
+                temp_selected[speech.mutex_group or speech.id] = True
+
+        final_speech_count = len(temp_selected) + sum(
+            1 for s in speech_configs if s.type == "fixed"
+        )
+        add_number_prefix = final_speech_count > 1  # 只有多条话术时才加序号
+
         # 遍历话术配置
         for speech in speech_configs:
             if speech.type == "fixed":
                 # 固定话术，直接添加（不使用条件判断）
                 content = self._replace_speech_variables(speech.content, speech.variables, {})
                 # 添加序号前缀
-                if speech_index < len(number_symbols):
+                if add_number_prefix and speech_index < len(number_symbols):
                     content = f"{number_symbols[speech_index]} {content}"
                 speech_index += 1
                 results.append(content)
@@ -85,7 +101,7 @@ class SpeechProcessor:
                 if self._check_speech_conditions(speech, detail_data_list):
                     content = self._replace_speech_variables(speech.content, speech.variables, {})
                     # 添加序号前缀
-                    if speech_index < len(number_symbols):
+                    if add_number_prefix and speech_index < len(number_symbols):
                         content = f"{number_symbols[speech_index]} {content}"
                     speech_index += 1
                     results.append(content)

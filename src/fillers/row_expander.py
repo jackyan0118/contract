@@ -92,9 +92,6 @@ class RowExpander:
                 logger.warning("No speech row found")
                 return
 
-            # 保存话术行的 Tr 元素
-            speech_tr = speech_row._tr
-
             # 获取表格的列宽（从 tblGrid 获取，这是 python-docx 打开文档后的标准宽度）
             tbl = table._tbl
             tblGrid = tbl.find('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tblGrid')
@@ -119,10 +116,15 @@ class RowExpander:
                 else:
                     template_cell_formats.append(None)
 
-            # 3. 删除从 start_row 开始到话术行之前的所有行
+            # 3. 删除从 start_row 开始到话术行之前的所有行（不删除话术行本身）
             rows_to_remove = []
+            speech_tr = speech_row._tr
             for idx in range(start_row, len(table.rows) - 1):
-                rows_to_remove.append(table.rows[idx]._element)
+                row_tr = table.rows[idx]._tr
+                # 不删除话术行
+                if row_tr is speech_tr:
+                    continue
+                rows_to_remove.append(row_tr)
 
             for tr in rows_to_remove:
                 parent = tr.getparent()
@@ -200,13 +202,13 @@ class RowExpander:
                         last_row.cells[cell_idx].text = text
 
             # 7. 按折扣率合并单元格（供货价列）
-            # merge_info 非空时执行合并（新格式包含模板字符串，旧格式包含折扣值）
+            # merge_info 格式：{start_idx: (template_string, span_count)}
             if merge_info:
-                self._merge_vertical_cells_by_discount(table, start_row, merge_info, len(columns), discount_template)
+                self._merge_vertical_cells_by_discount(table, start_row, merge_info, len(columns))
 
         logger.info(f"Expanded table with {data_count} rows")
 
-    def _merge_vertical_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int, discount_template: str) -> None:
+    def _merge_vertical_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int) -> None:
         """按折扣率垂直合并单元格
 
         使用vMerge来合并单元格：
@@ -216,9 +218,8 @@ class RowExpander:
         Args:
             table: 表格对象
             start_row: 起始行索引
-            merge_info: 合并信息 {row_idx: (discount, span_count)}
+            merge_info: 合并信息 {row_idx: (template_str, span_count)}
             col_count: 列数量
-            discount_template: 折扣话术模板字符串
         """
         if not merge_info or col_count < 3:
             return
@@ -230,7 +231,11 @@ class RowExpander:
         from docx.oxml.ns import qn
 
         # 遍历合并信息
-        for row_idx, (discount, span_count) in merge_info.items():
+        for row_idx, info in merge_info.items():
+            if isinstance(info, tuple) and len(info) == 2:
+                template_str, span_count = info
+            else:
+                continue
             if span_count <= 1:
                 continue
 
@@ -293,7 +298,7 @@ class RowExpander:
 
             # 获取起始行的单元格，设置合并后的文本
             start_cell = table.rows[actual_start_row].cells[price_col_idx]
-            cell_text = discount_template.format(discount=discount)
+            cell_text = template_str if template_str else ""
             start_cell.text = cell_text
 
             # 设置起始行的 vMerge 为 restart

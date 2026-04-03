@@ -311,7 +311,6 @@ class DocumentGenerator:
             )
 
             # 获取折扣话术模板
-            discount_template = template_config.discount_template if template_config else None
             self.row_expander.expand(
                 table,
                 grouped_data,
@@ -321,7 +320,6 @@ class DocumentGenerator:
                 True,
                 has_speech_row,
                 merge_info,
-                discount_template,
             )
 
             # 获取话术内容
@@ -340,24 +338,14 @@ class DocumentGenerator:
 
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
                     # 找到话术行，替换占位符
-                    # 只修改合并单元格的主单元格（Cell 1）
-                    # Cell 2-6 是虚拟单元格，由于 gridSpan 合并，它们的文本会被忽略
-
-                    # 修改 Cell 1 - 这是合并单元格的主单元格
-                    cell1 = row.cells[1]
-                    # 清空并设置新内容
-                    cell1.text = full_speech
-
-                    # 修改 Cell 0 - 保留 "其他"，移除占位符
-                    cell0 = row.cells[0]
-                    cell0_text = (
-                        cell0.text.replace("{{#话术}}", "")
-                        .replace("{{/话术}}", "")
-                        .replace("{{话术}}", "")
-                    )
-                    cell0.text = cell0_text if cell0_text else "其他"
-
-                    # Cell 2-6 不需要修改，因为它们是虚拟单元格
+                    for cell in row.cells:
+                        cell_text = cell.text
+                        if "{{话术}}" in cell_text:
+                            # 清空并设置新内容
+                            cell_text = cell_text.replace("{{#话术}}", "")
+                            cell_text = cell_text.replace("{{/话术}}", "")
+                            cell_text = cell_text.replace("{{话术}}", full_speech)
+                            cell.text = cell_text
 
     def _apply_dedup_rules(
         self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
