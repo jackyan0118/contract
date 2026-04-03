@@ -2,6 +2,10 @@ id: 模板14
 name: KHB Polaris品牌北极星发光产品供货价
 file: 模板14：KHB Polaris品牌北极星发光产品供货价.docx
 category: 北极星发光
+paragraph_placeholders:
+  标题: KHB Polaris品牌北极星发光产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
@@ -9,41 +13,53 @@ detail_filter:
       operator: '='
       value: '14'
 
-    name: CPXF=北极星发光试剂
-  description: ''
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
+- name: 产品类别编码
+  description: 产品类别编码正序
+  field: CPXF_BM
+  order: asc
+
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
   - name: 物料编码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 简称
-    source_field: XMJC
-    source_table: UF_HTJGKST_DT1
   - name: 分类
-    source_field: CPXF_NAME
+    source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
-  - name: 规格
+  - name: 规格型号
     source_field: GG
     source_table: UF_HTJGKST_DT1
-  - name: 零售价
-    source_field: LSJ
-    source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    end: '{{/明细表}}'
+    start: '{{#明细表}}'
+
+speeches:
+- id: 话术1
+  type: fixed
+  content: '其余的北极星发光试剂的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品“单价”为准（即，供货价=甲方产品的零售价×【22.5】%；供货价计量单位四舍五入保留到分，下同）。'
+- id: 话术2
+  type: fixed
+  content: '【北极星发光耗材】的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品“单价”为准（即，供货价=甲方产品的零售价×【45】%；供货价计量单位四舍五入保留到分，下同）。'
+- id: 话术3
+  type: fixed
+  content: '新上市的产品价格另行通知。'

@@ -2,37 +2,40 @@ id: 模板19
 name: 第三方（索灵）生化产品供货价
 file: 模板19：第三方（索灵）生化产品供货价.docx
 category: 外购试剂
+paragraph_placeholders:
+  标题: 第三方（索灵）生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '102'
+    - field: DJZ
+      operator: in
+      value:
+      - '64'
+      - '65'
+      - '66'
+      - '78'
 
-    name: CPXF=第三方试剂
-  description: ''
+sort_rules:
+- name: 产品类别编码
+  description: 产品类别编码正序
+  field: CPXF_BM
+  order: asc
+
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
   - name: SAP代码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 简称
-    source_field: XMJC
-    source_table: UF_HTJGKST_DT1
   - name: 类别
-    source_field: CPXF_NAME
+    source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
-  - name: 缩写
-    source_field: WLMS
-    source_table: UF_HTJGKST_DT1
-    transform: substring
-    params:
-      length: 8
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
@@ -42,14 +45,15 @@ table:
   - name: 零售价
     source_field: LSJ
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
+    transform: currency
+    params:
+      decimals: 2
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    end: '{{/明细表}}'
+    start: '{{#明细表}}'

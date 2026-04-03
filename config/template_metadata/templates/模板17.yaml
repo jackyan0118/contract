@@ -1,7 +1,11 @@
 id: 模板17
 name: 血筛核酸产品供货价
 file: 模板17：血筛核酸产品供货价.docx
-category: 血筛核酸
+category: 外购试剂
+paragraph_placeholders:
+  标题: 血筛核酸产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
@@ -9,20 +13,15 @@ detail_filter:
       operator: '='
       value: '32'
 
-    name: CPXF=血筛核酸
-  description: ''
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
   - name: SAP代码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 简称
-    source_field: XMJC
+  - name: 类别
+    source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
@@ -33,14 +32,15 @@ table:
   - name: 零售价
     source_field: LSJ
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
+    transform: currency
+    params:
+      decimals: 2
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    end: '{{/明细表}}'
+    start: '{{#明细表}}'

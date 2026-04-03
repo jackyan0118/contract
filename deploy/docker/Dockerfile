@@ -13,16 +13,18 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 复制项目文件
+# 先复制依赖文件（利用 Docker 缓存）
 COPY pyproject.toml ./
 COPY requirements.txt ./
+
+# 安装 Python 依赖（如果 requirements.txt 没变，这层会被缓存）
+RUN pip install --no-cache-dir --user --upgrade pip && \
+    pip install --no-cache-dir --user -r requirements.txt
+
+# 再复制其余项目文件（这些改变不会导致 pip install 重新执行）
 COPY src ./src
 COPY config ./config
 COPY deploy/docker/instantclient_11_2 ./instantclient_11_2
-
-# 安装 Python 依赖
-RUN pip install --no-cache-dir --user --upgrade pip && \
-    pip install --no-cache-dir --user -r requirements.txt
 
 # =============================================================================
 # 阶段2: 运行镜像

@@ -2,36 +2,33 @@ id: 模板9.1
 name: 日立008（肾功和心肌酶）产品价格-集采中标价
 file: 模板9.1：日立008（肾功和心肌酶）产品价格-集采中标价.docx
 category: 集采产品
+paragraph_placeholders:
+  标题: 肾功和心肌酶008生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '23'
-
-    name: CPXF=日立008试剂
-  - conditions:
-    - field: DJZMC
+    - field: DJZ
       operator: in
       value:
-      - 日立008-肾功和心肌酶
-      - 日立008-肾功和心肌酶-含校准质控
-    name: DJZMC=日立008-肾功和心肌酶
-  - conditions:
+      - '47'
+      - '85'
     - field: SFJC
       operator: '='
-      value: 1
-    name: SFJC=1
-  - conditions:
-    - field: BNGHJLX
+      value: '0'
+    - field: BNGHJLXZ
       operator: '='
-      value: 集采中标价
-    name: BNGHJLX=集采中标价
-  description: ''
+      value: '5'
+
+dedup_rules:
+- name: 产品名称
+  field: WLMS
+
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -41,13 +38,75 @@ table:
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
+
 speeches:
 - id: 话术1
   type: fixed
-  position: after_table
-  content: （待完善）
+  content: '注：前述试剂中标价格，以江西省医疗保障局发布的《关于公布肾功和心肌酶生化类检测试剂省际联盟集中带量采购中选结果的通知》（具体网址为http://ybj.jiangxi.gov.cn/art/2024/3/5/art_28422_4805725.html）附件2：肾功和心肌酶生化类检测试剂省际联盟集中带量采购产品供应清单中所列的中选价为准。'
+
+product_matching:
+  field: WLMS
+  products:
+    - name: β2-微球蛋白测定试剂盒(胶乳增强免疫比浊法)
+      seq: 1
+    - name: β2-微球蛋白测定试剂盒（粒子增强免疫比浊法）
+      seq: 2
+    - name: 肌酐检测试剂盒（肌氨酸氧化酶法）
+      seq: 3
+    - name: 肌酐测定试剂盒(肌氨酸氧化酶法)
+      seq: 4
+    - name: 肌酸激酶（CK）测定试剂盒（N-乙酰半胱氨酸法）
+      seq: 5
+    - name: 肌酸激酶MB型同工酶（CK-MB）测定试剂盒（免疫抑制法）
+      seq: 6
+    - name: 视黄醇结合蛋白测定试剂盒 (胶乳增强免疫比浊法)
+      seq: 7
+    - name: 同型半胱氨酸（HCY）测定试剂盒（液体）（循环酶法）
+      seq: 8
+    - name: 同型半胱氨酸测定试剂盒（酶循环法）
+      seq: 9
+    - name: 胱抑素C测定试剂盒(免疫比浊法)
+      seq: 10
+    - name: 肌红蛋白测定试剂盒（胶乳增强免疫比浊法）
+      seq: 11
+    - name: 中性粒细胞明胶酶相关脂质运载蛋白测定试剂盒(粒子增强免疫比浊法)
+      seq: 12
+    - name: 尿素测定试剂盒(液体)(紫外-谷氨酸脱氢酶法)
+      seq: 13
+    - name: 尿酸测定试剂盒(液体)(氧化酶法)
+      seq: 14
+    - name: α1-微球蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 15
+    - name: α-羟丁酸脱氢酶测定试剂盒（DGKC法）
+      seq: 16
+    - name: 二氧化碳测定试剂盒(酶法)
+      seq: 17
+    - name: 尿微量白蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 18
+    - name: 尿微量白蛋白测定试剂盒(免疫比浊法)
+      seq: 19
+    - name: N-乙酰-β-D-氨基葡萄糖苷酶测定试剂盒(速率法)
+      seq: 20
+    - name: 尿免疫球蛋白G测定试剂盒（免疫比浊法）
+      seq: 21
+    - name: 缺血修饰白蛋白测定试剂盒（白蛋白-钴结合法）
+      seq: 22
+    - name: 心型脂肪酸结合蛋白测定试剂盒（胶乳免疫比浊法）
+      seq: 23
+    - name: 血管紧张素转换酶测定试剂盒(速率法)
+      seq: 24
+    - name: 脂蛋白相关磷脂酶A2测定试剂盒（胶乳免疫比浊法）
+      seq: 25
+
+discount_templates: 
+- seq_range: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【65】%"
+- seq_range: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【68】%"
+

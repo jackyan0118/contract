@@ -16,41 +16,41 @@ detail_filter:
       - '41'
   description: 当产品细分为酶免试剂或胶体金试剂时
 
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
+
 table:
   placeholders:
     start: '{{#明细表}}'
     end: '{{/明细表}}'
   columns:
   - name: 产品类别
-    source_field: CPXF_NAME
-    source_table: UF_HTJGKST_DT1
-    description: 产品细分
   - name: 序号
-    source_field: ''
     type: auto_number
-    description: 自动编号
   - name: 物料编码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-    description: 物料代码
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
-    description: 物料描述
   - name: 规格型号
     source_field: GG
     source_table: UF_HTJGKST_DT1
-    description: 规格
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    description: 供货价_元
     transform: currency
     params:
       decimals: 2
 
 speeches:
 - id: 话术1
-  name: 新上市通知
   type: fixed
   content: 新上市的产品价格另行通知。

@@ -2,37 +2,30 @@ id: 模板30
 name: 外购试剂（上海睿康）生化产品供货价
 file: 模板30：外购试剂（上海睿康）生化产品供货价.docx
 category: 外购试剂
+paragraph_placeholders:
+  标题: 外购（上海睿康）生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '103'
+    - field: PP
+      operator: '='
+      value: '33'
 
-    name: CPXF=外购试剂
-  description: ''
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
   - name: SAP代码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 简称
-    source_field: XMJC
-    source_table: UF_HTJGKST_DT1
   - name: 类别
-    source_field: CPXF_NAME
+    source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
-  - name: 缩写
-    source_field: WLMS
-    source_table: UF_HTJGKST_DT1
-    transform: substring
-    params:
-      length: 8
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
@@ -42,14 +35,15 @@ table:
   - name: 零售价
     source_field: LSJ
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
+    transform: currency
+    params:
+      decimals: 2
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    end: '{{/明细表}}'
+    start: '{{#明细表}}'

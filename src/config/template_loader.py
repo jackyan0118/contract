@@ -118,7 +118,28 @@ class ProductMatchItem(BaseModel):
 
 class ProductMatchModel(BaseModel):
     """产品匹配模型"""
+    match_field: str = "WLMS"  # 匹配字段
     products: List[ProductMatchItem] = Field(default_factory=list)
+
+
+class SortRuleModel(BaseModel):
+    """排序规则模型"""
+    name: str = ""
+    description: str = ""
+    field: str = ""
+    order: str = "asc"  # asc 或 desc
+
+
+class DedupRuleModel(BaseModel):
+    """去重规则模型"""
+    name: str = ""
+    field: str = ""
+
+
+class DiscountTemplateModel(BaseModel):
+    """折扣话术模板模型"""
+    seq_range: List[int] = Field(default_factory=list)
+    template: str = ""
 
 
 class TemplateMetadataModel(BaseModel):
@@ -136,6 +157,9 @@ class TemplateMetadataModel(BaseModel):
     speeches: List[SpeechModel] = Field(default_factory=list)
     product_matching: Optional[ProductMatchModel] = None
     discount_template: Optional[str] = None
+    discount_templates: List[DiscountTemplateModel] = Field(default_factory=list)
+    sort_rules: List[SortRuleModel] = Field(default_factory=list)
+    dedup_rules: List[DedupRuleModel] = Field(default_factory=list)
 
 
 class TemplateLoader:

@@ -12,6 +12,8 @@ class RuleCondition(BaseModel):
     定价组名称: Optional[Union[str, list]] = Field(default=None, description="定价组名称")
     是否集采: Optional[Union[str, list]] = Field(default=None, description="是否集采: 0=是, 1=否")
     供货价类型: Optional[Union[str, list]] = Field(default=None, description="供货价类型")
+    物料代码: Optional[Union[str, list]] = Field(default=None, description="物料代码，支持列表")
+    品牌编号: Optional[Union[str, list]] = Field(default=None, description="品牌编号")
 
     def match(self, data: Dict[str, Any]) -> bool:
         """检查数据是否满足此条件

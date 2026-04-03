@@ -200,8 +200,8 @@ class RowExpander:
                         last_row.cells[cell_idx].text = text
 
             # 7. 按折扣率合并单元格（供货价列）
-            # 只有同时存在 merge_info 和 discount_template 时才执行折扣话术合并
-            if merge_info and discount_template:
+            # merge_info 非空时执行合并（新格式包含模板字符串，旧格式包含折扣值）
+            if merge_info:
                 self._merge_vertical_cells_by_discount(table, start_row, merge_info, len(columns), discount_template)
 
         logger.info(f"Expanded table with {data_count} rows")
@@ -373,13 +373,24 @@ class RowExpander:
 
             if is_price_col:
                 # 供货价列处理逻辑
-                if is_merge_start and discount_template:
-                    # 有折扣话术时，显示折扣率
-                    discount = data.get('_discount')
-                    if discount:
-                        value = discount_template.format(discount=discount)
+                if is_merge_start and merge_info:
+                    # 获取该行的合并信息
+                    merge_data = merge_info.get(row_number - 1)  # row_number是1-based
+                    if merge_data:
+                        template_or_discount, span_count = merge_data
+                        # 判断是模板字符串还是折扣值
+                        if '{discount}' in template_or_discount:
+                            # 旧格式：折扣值，需要格式化
+                            discount = data.get('_discount')
+                            if discount:
+                                value = template_or_discount.format(discount=discount)
+                            else:
+                                value = ""
+                        else:
+                            # 新格式：模板字符串直接使用
+                            value = template_or_discount
                     else:
-                        value = ""
+                        value = self._get_value(data, col_config, row_number)
                 else:
                     # 没有折扣话术时，正常显示供货价
                     value = self._get_value(data, col_config, row_number)

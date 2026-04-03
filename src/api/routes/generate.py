@@ -78,7 +78,6 @@ async def _do_generate_document(
         logger.info(f"明细数据字段: {list(details_dict[0].keys()) if details_dict else 'none'}")
 
         # 4. 按关键词组合分组明细数据
-        #    关键词组合: 产品细分编号 + 定价组名称 + 是否集采
         rule_loader = RuleLoader()
         rules = rule_loader.load()
         logger.info(f"加载了 {len(rules)} 条模板规则")
@@ -86,11 +85,17 @@ async def _do_generate_document(
         # 定义分组关键词提取函数
         def get_detail_key(d: dict) -> tuple:
             """从明细中提取关键词组合"""
-            cpxf_bm = str(d.get("CPXF_BM") if d.get("CPXF_BM") is not None else d.get("cpxf_bm") or "")
+            cpxf_bm = str(
+                d.get("CPXF_BM") if d.get("CPXF_BM") is not None else d.get("cpxf_bm") or ""
+            )
             djz = str(d.get("DJZ") if d.get("DJZ") is not None else d.get("djz") or "")
             sfjc = str(d.get("SFJC") if d.get("SFJC") is not None else d.get("sfjc") or "")
-            bnghjlxz = str(d.get("BNGHJLXZ") if d.get("BNGHJLXZ") is not None else d.get("bnghjlxz") or "")
-            return (cpxf_bm, djz, sfjc, bnghjlxz)
+            bnghjlxz = str(
+                d.get("BNGHJLXZ") if d.get("BNGHJLXZ") is not None else d.get("bnghjlxz") or ""
+            )
+            wldm = str(d.get("WLDM") if d.get("WLDM") is not None else d.get("wldm") or "")
+            pp = str(d.get("PP") if d.get("PP") is not None else d.get("pp") or "")
+            return (cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp)
 
         # 按关键词组合分组
         detail_groups: dict[tuple, list] = {}
@@ -109,7 +114,7 @@ async def _do_generate_document(
         template_groups: list[tuple[TemplateRule, list[dict]]] = []
 
         for key, group_details in detail_groups.items():
-            cpxf_bm, djz, sfjc, bnghjlxz = key
+            cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp = key
 
             # 为该组构建匹配数据
             match_data = {
@@ -117,6 +122,8 @@ async def _do_generate_document(
                 "定价组编号": djz,
                 "是否集采": sfjc,
                 "供货价类型": bnghjlxz,
+                "物料代码": wldm,
+                "品牌编号": pp,
             }
             logger.info(f"匹配数据: {match_data}")
 

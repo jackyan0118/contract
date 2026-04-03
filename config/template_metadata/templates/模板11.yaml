@@ -2,30 +2,49 @@ id: 模板11
 name: KHB Polaris品牌北极星生化产品供货价
 file: 模板11：KHB Polaris品牌北极星生化产品供货价.docx
 category: 北极星生化
+paragraph_placeholders:
+  标题: KHB Polaris品牌北极星生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
     - field: CPXF_BM
       operator: '='
       value: '24'
+    - field: LYXH
+      operator: '='
+      value: '2'
+  - conditions:
+    - field: CPXF_BM
+      operator: '='
+      value: '24'
+    - field: LYXH
+      operator: '='
+      value: '1'
+    - field: DJZ
+      operator: '='
+      value: '34'
 
-    name: CPXF=北极星生化试剂
-  description: ''
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
+
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
   - name: 物料编码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 简称
-    source_field: XMJC
-    source_table: UF_HTJGKST_DT1
   - name: 分类
-    source_field: CPXF_NAME
+    source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
@@ -36,14 +55,86 @@ table:
   - name: 零售价
     source_field: LSJ
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
+    transform: currency
+    params:
+      decimals: 2
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    end: '{{/明细表}}'
+    start: '{{#明细表}}'
+
+speeches:
+- id: 话术1.1
+  mutex_group: A
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value: 
+    - '80'
+    - '41'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  - field: BNGHJLXZ
+    operator: '!='
+    value: '7'
+  - field: BNGHJLXZ
+    operator: '!='
+    value: '8'
+  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省医疗保障局发布的《关于公布肝功生化类检测试剂省际联盟集中带量采购中选结果的通知》（赣集采办字〔2023〕14号）中附件2.肝功生化类检测试剂省际联盟集中带量采购中选供应清单为准。'
+- id: 话术1.2
+  mutex_group: A
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value: 
+    - '80'
+    - '41'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  - field: BNGHJLXZ
+    operator: in
+    value: 
+    - '7'
+    - '8'
+  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类 检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。'
+- id: 话术2.1
+  mutex_group: B
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value:
+    - '82'
+    - '46'
+    - '81'
+    - '67'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  content: '除其他肾功和心肌酶生化类检测试剂外， 其余的【北极星生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品“单价”为准（即，供货价=甲方产品的零售价×【25】%；供货价计量单位四舍五入保留到分，下同）。'
+- id: 话术2.2
+  mutex_group: B
+  type: conditional
+  conditions:
+  - field: CPXF_BM
+    operator: '='
+    value: '24'
+  - field: SFJC
+    operator: '='
+    value: '1'
+  content: '其余的【北极星生化】产品的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品“单价”为准（即，供货价=甲方产品的零售价×【25】%；供货价计量单位四舍五入保留到分，下同）。'
+- id: 话术3
+  type: fixed
+  content: '【北极星生化耗材】的供货价以甲方网上订货平台（即， http://po.skhb.com:8080）明确的产品“单价”为准（即，供货价=甲方产品的零售价×【50】%；供货价计量单位四舍五入保留到分）。'
+- id: 话术4
+  type: fixed
+  content: '新上市的产品价格另行通知。'

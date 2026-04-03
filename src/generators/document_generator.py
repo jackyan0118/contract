@@ -16,7 +16,12 @@ from src.fillers.row_expander import RowExpander
 from src.fillers.format_preserver import FormatPreserver
 from src.fillers.speech_processor import SpeechProcessor, Speech
 from src.fillers.constants import DEFAULT_SPEECH_VARIABLES, HEADER_TO_FIELD
-from src.config.template_loader import TemplateLoader, TemplateMetadataModel, ColumnType
+from src.config.template_loader import (
+    TemplateLoader,
+    TemplateMetadataModel,
+    ColumnType,
+    SortRuleModel,
+)
 from src.models.template_rule import TemplateRule
 
 logger = logging.getLogger(__name__)
@@ -274,14 +279,20 @@ class DocumentGenerator:
             # 应用 detail_filter 过滤数据
             filtered_data = self._apply_detail_filter(template_config, data_list)
 
-            # 应用产品匹配去重（product_matching）
-            filtered_data = self._apply_product_matching(template_config, filtered_data)
+            # 应用排序规则
+            sorted_data = self._apply_sort_rules(template_config, filtered_data)
 
-            # 只有当模板配置了 product_matching 时才计算折扣分组（用于模板6.1等需要合并单元格的模板）
-            if template_config and template_config.product_matching:
-                grouped_data, merge_info = self._calculate_discount_and_group(filtered_data)
+            # 应用去重规则
+            deduped_data = self._apply_dedup_rules(template_config, sorted_data)
+
+            # 应用产品匹配
+            matched_data = self._apply_product_matching(template_config, deduped_data)
+
+            # 计算折扣分组
+            if template_config and (template_config.product_matching or template_config.discount_templates):
+                grouped_data, merge_info = self._calculate_discount_and_group(matched_data, template_config)
             else:
-                grouped_data = filtered_data
+                grouped_data = matched_data
                 merge_info = {}
 
             # 解析列配置（优先使用模板配置）
@@ -348,21 +359,64 @@ class DocumentGenerator:
 
                     # Cell 2-6 不需要修改，因为它们是虚拟单元格
 
-    def _apply_product_matching(
+    def _apply_dedup_rules(
         self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """应用产品匹配规则进行去重
-
-        使用product_matching配置的标准产品列表进行匹配：
-        - 匹配成功：显示标准产品名称
-        - 匹配失败：显示原品名作为"其他"
+        """应用去重规则
 
         Args:
             template_config: 模板配置
-            data_list: 过滤后的数据列表
+            data_list: 排序后的数据列表
 
         Returns:
             去重后的数据列表
+        """
+        if not template_config or not template_config.dedup_rules:
+            return data_list
+
+        if not data_list:
+            return data_list
+
+        dedup_rules = template_config.dedup_rules
+        # 提取所有需要去重的字段
+        fields = [rule.field for rule in dedup_rules if rule.field]
+
+        if not fields:
+            return data_list
+
+        seen = set()
+        result = []
+
+        for item in data_list:
+            # 构建去重的 key（多字段组合）
+            key_parts = []
+            for field in fields:
+                value = item.get(field, "")
+                key_parts.append(str(value) if value is not None else "")
+            key = tuple(key_parts)
+
+            if key not in seen:
+                seen.add(key)
+                result.append(item)
+
+        logger.info(f"Dedup rules: {len(data_list)} -> {len(result)} items, fields: {fields}")
+        return result
+
+    def _apply_product_matching(
+        self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
+        """应用产品匹配规则
+
+        使用 product_matching 配置的标准产品列表进行匹配：
+        - 匹配成功：标记 _seq，按 seq 顺序排序
+        - 未匹配：追加到末尾，保持原顺序
+
+        Args:
+            template_config: 模板配置
+            data_list: 去重后的数据列表
+
+        Returns:
+            匹配后的数据列表
         """
         if not template_config or not template_config.product_matching:
             return data_list
@@ -371,64 +425,125 @@ class DocumentGenerator:
             return data_list
 
         product_matching = template_config.product_matching
+        match_field = product_matching.match_field or "WLMS"
 
-        # 构建标准产品名称到序号的映射
+        # 构建产品名称到序号的映射
         product_map = {}
         for p in product_matching.products:
             product_map[p.name] = p.seq
 
-        # 按标准产品列表去重
-        seen_standard = set()
-        result = []
-
-        # 先按标准产品匹配
-        for wlms in product_map.keys():
-            # 查找匹配的品名
-            for item in data_list:
-                item_wlms = item.get("WLMS", "")
-                if item_wlms == wlms:
-                    # 添加标准产品
-                    result.append({**item, "_matched_product": wlms, "_seq": product_map[wlms]})
-                    seen_standard.add(wlms)
-                    break
-
-        # 添加未匹配的产品作为"其他"
+        matched = []
         unmatched = []
+
         for item in data_list:
-            item_wlms = item.get("WLMS", "")
-            if item_wlms not in seen_standard:
-                unmatched.append(
-                    {
-                        **item,
-                        "_matched_product": item_wlms,  # 保留原品名
-                        "_seq": 999,  # 未匹配的放最后
-                    }
-                )
+            item_value = item.get(match_field, "")
+            # 查找匹配的产品
+            if item_value in product_map:
+                matched.append({**item, "_seq": product_map[item_value], "_matched": True})
+            else:
+                unmatched.append({**item, "_seq": 999, "_matched": False})
 
-        # 按序号排序
-        result.extend(unmatched)
-        result.sort(key=lambda x: x.get("_seq", 999))
+        # 按 seq 排序（匹配的在前，未匹配的在后）
+        matched.sort(key=lambda x: x.get("_seq", 999))
+        unmatched.sort(key=lambda x: x.get("_seq", 999))
 
-        logger.info(f"Product matching: {len(data_list)} -> {len(result)} items")
+        result = matched + unmatched
+
+        logger.info(f"Product matching: {len(data_list)} -> {len(result)} items, matched: {len(matched)}, unmatched: {len(unmatched)}")
 
         return result
 
-    def _calculate_discount_and_group(self, data_list: List[Dict[str, Any]]) -> tuple:
-        """计算折扣率并按折扣分组
+    def _calculate_discount_and_group(
+        self,
+        data_list: List[Dict[str, Any]],
+        template_config: Optional[TemplateMetadataModel] = None
+    ) -> tuple:
+        """计算折扣分组
 
-        用于模板6.1等需要按折扣合并单元格的模板
+        支持两种模式：
+        1. discount_templates 模式：按 seq_range 分组，使用配置的话术模板
+        2. discount_template 模式（兼容）：按折扣率分组
 
         Args:
-            data_list: 过滤后的数据列表
+            data_list: 数据列表
+            template_config: 模板配置
 
         Returns:
             (分组后的数据列表, 合并信息字典)
-            - 分组后的数据：按折扣率排序，相同折扣的数据放在一起
-            - 合并信息：{row_idx: (discount, span_count)} 表示该行需要合并多少行
         """
         if not data_list:
             return data_list, {}
 
+        # 优先使用 discount_templates（列表形式）
+        if template_config and template_config.discount_templates:
+            return self._group_by_seq_range(data_list, template_config.discount_templates)
+
+        # 兼容旧的 discount_template（单个字符串形式）
+        if template_config and template_config.discount_template:
+            return self._group_by_discount_rate(data_list)
+
+        return data_list, {}
+
+    def _group_by_seq_range(
+        self,
+        data_list: List[Dict[str, Any]],
+        discount_templates: List
+    ) -> tuple:
+        """按 seq_range 分组
+
+        Args:
+            data_list: 数据列表
+            discount_templates: 折扣话术模板列表
+
+        Returns:
+            (分组后的数据列表, 合并信息字典)
+        """
+        # 构建 seq -> template 映射
+        seq_to_template = {}
+        for dt in discount_templates:
+            for seq in dt.seq_range:
+                seq_to_template[seq] = dt.template
+
+        # 按 seq 排序
+        sorted_data = sorted(data_list, key=lambda x: x.get("_seq", 999))
+
+        # 计算合并信息
+        merge_info = {}
+        current_template = None
+        span_count = 0
+        start_idx = 0
+
+        for idx, item in enumerate(sorted_data):
+            seq = item.get("_seq", 999)
+            template = seq_to_template.get(seq)
+
+            if template != current_template:
+                # 保存之前的合并信息
+                if current_template is not None and span_count > 1:
+                    merge_info[start_idx] = (current_template, span_count)
+                # 开始新的分组
+                current_template = template
+                span_count = 1
+                start_idx = idx
+            else:
+                span_count += 1
+
+        # 保存最后一组的合并信息
+        if current_template is not None and span_count > 1:
+            merge_info[start_idx] = (current_template, span_count)
+
+        logger.info(f"Sequence range grouping: {len(sorted_data)} items, {len(merge_info)} merge groups")
+        return sorted_data, merge_info
+
+    def _group_by_discount_rate(self, data_list: List[Dict[str, Any]]) -> tuple:
+        """按折扣率分组（兼容旧逻辑）
+
+        Args:
+            data_list: 数据列表
+
+        Returns:
+            (分组后的数据列表, 合并信息字典)
+        """
         # 为每条数据计算折扣率
         for item in data_list:
             jcjxj = item.get("JCJXJ")
@@ -535,8 +650,47 @@ class DocumentGenerator:
 
         logger.info(f"Filtered {len(data_list)} rows to {len(unique_filtered)} rows")
         return unique_filtered
-        logger.info(f"Filtered {len(data_list)} rows to {len(filtered)} rows")
-        return filtered
+
+    def _apply_sort_rules(
+        self,
+        template_config: Optional[TemplateMetadataModel],
+        data_list: List[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        """应用排序规则
+
+        Args:
+            template_config: 模板配置
+            data_list: 原始数据列表
+
+        Returns:
+            排序后的数据列表
+        """
+        if not template_config or not template_config.sort_rules:
+            return data_list
+
+        sort_rules = template_config.sort_rules
+        logger.info(f"Applying sort rules: {[r.name for r in sort_rules]}")
+
+        def sort_key(item: Dict[str, Any]) -> tuple:
+            keys = []
+            for rule in sort_rules:
+                field = rule.field
+                order = rule.order.lower() if rule.order else "asc"
+                value = item.get(field)
+                # 将 None 转换为空字符串用于排序
+                if value is None:
+                    value = ""
+                else:
+                    value = str(value)
+                # 升序用原值，降序用 (1, value) 使其排在后面
+                if order == "desc":
+                    keys.append((1, value))
+                else:
+                    keys.append((0, value))
+            return tuple(keys)
+
+        sorted_data = sorted(data_list, key=sort_key)
+        return sorted_data
 
     def _parse_table_columns_from_config(self, table_config) -> List[Dict[str, str]]:
         """从模板配置解析表格列

@@ -2,46 +2,58 @@ id: 模板6.1
 name: 卓越生化（肾功和心肌酶）产品价格-集采中标价
 file: 模板6.1：卓越生化（肾功和心肌酶）产品价格-集采中标价.docx
 category: 集采产品
+paragraph_placeholders:
+  标题: 肾功和心肌酶卓越生化产品供货价
+  金额单位: 元
+
 detail_filter:
   condition_groups:
   - conditions:
-    - field: CPXF
+    - field: CPXF_BM
       operator: '='
-      value: '150'
-    - field: DJZMC
-      operator: contains
-      value: 肾功和心肌酶
-    name: 卓越生化肾功心肌酶
-  description: ''
+      value: '22'
+    - field: DJZ
+      operator: in
+      value:
+      - '45'
+      - '95'
+      - '58'
+      - '97'
+    - field: SFJC
+      operator: '='
+      value: '0'
+    - field: BNGHJLXZ
+      operator: '='
+      value: '5'
+
+dedup_rules:
+- name: 产品名称
+  field: WLMS
+
 table:
-  placeholders:
-    start: '{{#明细表}}'
-    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
-    source_field: ''
   - name: 产品名称
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
   - name: 供货价
     source_field: GHJY
     source_table: UF_HTJGKST_DT1
-    format:
-      type: currency
-      decimal_places: 2
-paragraph_placeholders:
-  标题: 卓越生化（肾功和心肌酶）产品价格-集采中标价
-  金额单位: 元
+    transform: currency
+    params:
+      decimals: 2
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
+
 speeches:
 - id: 话术1
   type: fixed
-  position: after_table
   content: '注：前述试剂中标价格，以江西省医疗保障局发布的《关于公布肾功和心肌酶生化类检测试剂省际联盟集中带量采购中选结果的通知》（具体网址为http://ybj.jiangxi.gov.cn/art/2024/3/5/art_28422_4805725.html）附件2：肾功和心肌酶生化类检测试剂省际联盟集中带量采购产品供应清单中所列的中选价为准。'
-# 折扣话术模板（用于单元格合并时显示折扣信息）
-discount_template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【{discount}】%"
-# 产品匹配规则：25个标准产品列表
+
 product_matching:
+  field: WLMS
   products:
     - name: β2-微球蛋白测定试剂盒(胶乳增强免疫比浊法)
       seq: 1
@@ -93,3 +105,10 @@ product_matching:
       seq: 24
     - name: 脂蛋白相关磷脂酶A2测定试剂盒（胶乳免疫比浊法）
       seq: 25
+
+discount_templates: 
+- seq_range: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+  template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【65】%"
+- seq_range: [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+  template: "肾功和心肌酶生化类检测试剂省际联盟集采中选结果中的试剂对应相应规格产品的中标价*【68】%"
+

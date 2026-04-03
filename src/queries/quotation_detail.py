@@ -64,28 +64,31 @@ _DETAIL_COLUMNS = [
     "CPXF",
     "DJZ",
     "DJZMC",
+    # 品牌
+    "PP",
 ]
 
 # 项目简称关联表
 _CPKXMJC_TABLE = "uf_cpkxmjc"
 _CPXF_TABLE = "uf_cpxf"
+_JYTC_TABLE = "UF_JYTC"
 
-# 包含 XMJC 字段的完整字段列表（用于 _row_to_dict）
-_DETAIL_COLUMNS_WITH_XMJC = _DETAIL_COLUMNS + ["XMJC"]
-# CPXF_NAME: 产品细分名称(如"卓越生化试剂"), CPXF_BM: 产品细分BM编码(如"22")
-_DETAIL_COLUMNS_WITH_CPXF_NAME = _DETAIL_COLUMNS + ["XMJC", "CPXF_NAME", "CPXF_BM"]
+_DETAIL_COLUMNS_WITH_ALL = _DETAIL_COLUMNS + ["XMJC", "CPXF_NAME", "CPXF_BM", "JYTC_NAME"]
 
-# 明细查询 SQL 模板（关联项目简称表和产品细分表）
+# 明细查询 SQL 模板（关联项目简称表、产品细分表、检验套餐表）
 # XMJC 字段存储的是 UF_CPKXMJC.BH，需要关联查询 UF_CPKXMJC.XMJC
 # CPXF 字段存储的是 UF_CPXF.ID，需要关联查询 UF_CPXF.BM 获取产品细分BM编码
+# JYTC 字段存储的是 UF_JYTC.ID，需要关联查询 UF_JYTC.LB 获取检验套餐名称
 _QUERY_DETAIL_SQL = f"""
 SELECT d.{', d.'.join(_DETAIL_COLUMNS)},
        x.XMJC as XMJC,
        c.CPXF as CPXF_NAME,
-       c.BM as CPXF_BM
+       c.BM as CPXF_BM,
+       j.LB as JYTC_NAME
 FROM {{schema}}.{_DETAIL_TABLE} d
 LEFT JOIN {{schema}}.{_CPKXMJC_TABLE} x ON d.XMJC = x.BH
 LEFT JOIN {{schema}}.{_CPXF_TABLE} c ON d.CPXF = c.ID
+LEFT JOIN {{schema}}.{_JYTC_TABLE} j ON d.JYTC = j.ID
 WHERE d.WYBS = :wybs
 ORDER BY d.LYXH
 """
@@ -163,7 +166,7 @@ def get_quotation_details(wybs: str) -> list[dict]:
                 rows = cursor.fetchall()
 
                 # 将行数据转换为字典列表
-                details = [_row_to_dict(row, _DETAIL_COLUMNS_WITH_CPXF_NAME) for row in rows]
+                details = [_row_to_dict(row, _DETAIL_COLUMNS_WITH_ALL) for row in rows]
 
                 logger.info(
                     "报价单明细查询成功",
