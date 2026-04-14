@@ -95,7 +95,8 @@ async def _do_generate_document(
             )
             wldm = str(d.get("WLDM") if d.get("WLDM") is not None else d.get("wldm") or "")
             pp = str(d.get("PP") if d.get("PP") is not None else d.get("pp") or "")
-            return (cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp)
+            lyxh = str(d.get("LYXH") if d.get("LYXH") is not None else d.get("lyxh") or "")
+            return (cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp, lyxh)
 
         # 按关键词组合分组
         detail_groups: dict[tuple, list] = {}
@@ -114,7 +115,7 @@ async def _do_generate_document(
         template_groups: list[tuple[TemplateRule, list[dict]]] = []
 
         for key, group_details in detail_groups.items():
-            cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp = key
+            cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp, lyxh = key
 
             # 为该组构建匹配数据
             match_data = {
@@ -124,6 +125,7 @@ async def _do_generate_document(
                 "供货价类型": bnghjlxz,
                 "物料代码": wldm,
                 "品牌编号": pp,
+                "物料生成来源": lyxh,
             }
             logger.info(f"匹配数据: {match_data}")
 
