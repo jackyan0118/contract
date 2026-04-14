@@ -277,6 +277,7 @@ class DataTransformer:
             cpxf_bm=result_upper.get("CPXF_BM"),
             pp=result_upper.get("PP"),
             jytc=result_upper.get("JYTC"),
+            jytc_name=result_upper.get("JYTC_NAME"),
             xmjc=result_upper.get("XMJC"),
             tsjgsm=result_upper.get("TSJGSM"),
             # 新增字段（本年供货价类型、是否集采）

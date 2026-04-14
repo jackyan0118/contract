@@ -78,6 +78,7 @@ quotation_detail:
     CPXF_BM: "CPXF_BM"
     PP: "PP"
     JYTC: "JYTC"
+    JYTC_NAME: "JYTC_NAME"
     XMJC: "XMJC"
     JGJCY: "JGJCY"
     # 新增字段（本年供货价类型、是否集采）

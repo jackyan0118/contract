@@ -106,6 +106,7 @@ class QuotationDetail:
     cpxf_bm: Optional[str] = None  # 产品细分BM编码（如"22"）
     pp: Optional[str] = None  # 品牌
     jytc: Optional[str] = None  # 业态
+    jytc_name: Optional[str] = None  # 业态名称（检验套餐名称）
     xmjc: Optional[str] = None  # 项目简称
     tsjgsm: Optional[str] = None  # 特殊价格说明
     # 新增字段（本年供货价类型、是否集采）
