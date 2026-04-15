@@ -31,7 +31,6 @@ table:
     start: '{{#明细表}}'
     end: '{{/明细表}}'
   columns:
-  - name: 产品类别
   - name: 序号
     type: auto_number
   - name: 物料编码
