@@ -14,7 +14,7 @@ detail_filter:
       value: '103'
     - field: PP
       operator: '='
-      value: '24'
+      value: '50'
 
 table:
   columns:
