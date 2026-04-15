@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from docx import Document
+from docx.shared import Pt
 
 from src.readers.word_template_reader import WordTemplateReader
 from src.fillers.data_filler import DataFiller, FilterCondition
@@ -53,6 +54,80 @@ class DocumentGenerator:
         self.row_expander = RowExpander()
         self.format_preserver = FormatPreserver()
         self.speech_processor = SpeechProcessor()
+
+    def _set_cell_text(self, cell: Any, text: str) -> None:
+        """设置单元格文本，强制使用微软雅黑和小五号字体"""
+        from docx.oxml.ns import qn
+
+        font_name = "微软雅黑"
+
+        for para in cell.paragraphs:
+            for run in para.runs:
+                run.text = ""
+        if cell.paragraphs:
+            para = cell.paragraphs[0]
+            if not para.runs:
+                para.add_run("")
+
+            run = para.runs[0]
+            run.text = str(text)
+            run.font.name = font_name
+            run.font.size = Pt(9)
+
+            # 直接操作XML设置eastAsia字体
+            rPr = run._element.find(qn('w:rPr'))
+            if rPr is None:
+                rPr = run._element.makeelement(qn('w:rPr'), {})
+                run._element.insert(0, rPr)
+            rFonts = rPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = run._element.makeelement(qn('w:rFonts'), {})
+                rPr.insert(0, rFonts)
+            rFonts.set(qn('w:eastAsia'), font_name)
+            rFonts.set(qn('w:ascii'), font_name)
+            rFonts.set(qn('w:hAnsi'), font_name)
+
+    def _set_para_text(self, para: Any, text: str) -> None:
+        """设置段落文本，强制使用微软雅黑和小五号字体"""
+        from docx.oxml.ns import qn
+
+        font_name = "微软雅黑"
+
+        for run in para.runs:
+            run.text = ""
+        if para.runs:
+            run = para.runs[0]
+            run.text = text
+            run.font.name = font_name
+            run.font.size = Pt(9)
+            # 直接操作XML设置eastAsia字体
+            rPr = run._element.find(qn('w:rPr'))
+            if rPr is None:
+                rPr = run._element.makeelement(qn('w:rPr'), {})
+                run._element.insert(0, rPr)
+            rFonts = rPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = run._element.makeelement(qn('w:rFonts'), {})
+                rPr.insert(0, rFonts)
+            rFonts.set(qn('w:eastAsia'), font_name)
+            rFonts.set(qn('w:ascii'), font_name)
+            rFonts.set(qn('w:hAnsi'), font_name)
+        else:
+            new_run = para.add_run(text)
+            new_run.font.name = font_name
+            new_run.font.size = Pt(9)
+            # 直接操作XML设置eastAsia字体
+            rPr = new_run._element.find(qn('w:rPr'))
+            if rPr is None:
+                rPr = new_run._element.makeelement(qn('w:rPr'), {})
+                new_run._element.insert(0, rPr)
+            rFonts = rPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = new_run._element.makeelement(qn('w:rFonts'), {})
+                rPr.insert(0, rFonts)
+            rFonts.set(qn('w:eastAsia'), font_name)
+            rFonts.set(qn('w:ascii'), font_name)
+            rFonts.set(qn('w:hAnsi'), font_name)
 
     def generate(
         self,
@@ -243,12 +318,14 @@ class DocumentGenerator:
                 if "{{#明细表}}" in row_text:
                     is_detail_table = True
                     template_row_idx = row_idx
-                    # 清除标记文本
+                    # 清除标记文本（保留格式）
                     for cell in row.cells:
                         for para in cell.paragraphs:
-                            para.text = para.text.replace("{{#明细表}}", "").replace(
+                            new_text = para.text.replace("{{#明细表}}", "").replace(
                                 "{{/明细表}}", ""
                             )
+                            if new_text != para.text:
+                                self._set_para_text(para, new_text)
 
                 # 检查是否是话术行
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
@@ -341,11 +418,11 @@ class DocumentGenerator:
                     for cell in row.cells:
                         cell_text = cell.text
                         if "{{话术}}" in cell_text:
-                            # 清空并设置新内容
+                            # 清空并设置新内容（保留格式）
                             cell_text = cell_text.replace("{{#话术}}", "")
                             cell_text = cell_text.replace("{{/话术}}", "")
                             cell_text = cell_text.replace("{{话术}}", full_speech)
-                            cell.text = cell_text
+                            self._set_cell_text(cell, cell_text)
 
     def _apply_dedup_rules(
         self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]

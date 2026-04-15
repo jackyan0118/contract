@@ -5,6 +5,7 @@ from typing import List, Dict, Any
 from copy import deepcopy
 
 from docx import Document
+from docx.shared import Pt
 from docx.table import Table
 from docx.oxml import OxmlElement
 
@@ -18,6 +19,39 @@ class RowExpander:
 
     def __init__(self):
         self.format_preserver = FormatPreserver()
+
+    def _set_cell_text(self, cell: Any, text: str) -> None:
+        """设置单元格文本，强制使用微软雅黑和小五号字体"""
+        from docx.oxml.ns import qn
+
+        font_name = "微软雅黑"
+        font_size = Pt(9)
+
+        for para in cell.paragraphs:
+            for run in para.runs:
+                run.text = ""
+        if cell.paragraphs:
+            para = cell.paragraphs[0]
+            if not para.runs:
+                para.add_run("")
+
+            run = para.runs[0]
+            run.text = str(text)
+            run.font.name = font_name
+            run.font.size = font_size
+
+            # 直接操作XML设置eastAsia字体
+            rPr = run._element.find(qn('w:rPr'))
+            if rPr is None:
+                rPr = run._element.makeelement(qn('w:rPr'), {})
+                run._element.insert(0, rPr)
+            rFonts = rPr.find(qn('w:rFonts'))
+            if rFonts is None:
+                rFonts = run._element.makeelement(qn('w:rFonts'), {})
+                rPr.insert(0, rFonts)
+            rFonts.set(qn('w:eastAsia'), font_name)
+            rFonts.set(qn('w:ascii'), font_name)
+            rFonts.set(qn('w:hAnsi'), font_name)
 
     def expand(
         self,
@@ -44,6 +78,7 @@ class RowExpander:
             merge_info: 合并信息字典 {row_idx: (discount, span_count)} 用于垂直合并相同折扣的单元格
             discount_template: 折扣话术模板字符串，如 "肾功和心肌酶...*【{discount}】%"
         """
+        logger.info(f"[DEBUG] row_expander.expand called: data_count={len(data_list)}, start_row={start_row}")
         if merge_info is None:
             merge_info = {}
 
@@ -61,7 +96,7 @@ class RowExpander:
             if start_row < len(table.rows):
                 placeholder_row = table.rows[start_row]
                 for cell in placeholder_row.cells:
-                    cell.text = ""
+                    self._set_cell_text(cell, "")
                 self._fill_row(placeholder_row, data_list[0], columns, 1, False, None, discount_template)
             logger.info(f"Filled 1 row (replaced placeholder)")
         else:
@@ -194,12 +229,12 @@ class RowExpander:
                     is_merge_start = row_idx in merge_info
                     self._fill_row(row, data, columns, row_idx + 1, is_merge_start, merge_info, discount_template)
 
-            # 6. 对话术行进行文本替换
+            # 6. 对话术行进行文本替换（保留原有格式）
             if speech_row_texts:
                 last_row = table.rows[-1]
                 for cell_idx, text in enumerate(speech_row_texts):
                     if cell_idx < len(last_row.cells):
-                        last_row.cells[cell_idx].text = text
+                        self._set_cell_text(last_row.cells[cell_idx], text)
 
             # 7. 按折扣率合并单元格（供货价列）
             # merge_info 格式：{start_idx: (template_string, span_count)}
@@ -296,10 +331,10 @@ class RowExpander:
                     if bottom is not None:
                         tcBorders.remove(bottom)
 
-            # 获取起始行的单元格，设置合并后的文本
+            # 获取起始行的单元格，设置合并后的文本（保留原有格式）
             start_cell = table.rows[actual_start_row].cells[price_col_idx]
             cell_text = template_str if template_str else ""
-            start_cell.text = cell_text
+            self._set_cell_text(start_cell, cell_text)
 
             # 设置起始行的 vMerge 为 restart
             tc_start = start_cell._element
@@ -338,8 +373,8 @@ class RowExpander:
                 vMerge.set(qn('w:val'), 'merge')
                 tcPr.append(vMerge)
 
-                # 清空文本
-                merge_cell.text = ""
+                # 清空文本（保留格式）
+                self._set_cell_text(merge_cell, "")
 
         logger.info(f"Merged cells for {len(merge_info)} discount groups")
 
@@ -372,7 +407,6 @@ class RowExpander:
                 break
 
             cell = row.cells[col_idx]
-
             # 判断是否是供货价列（最后一列）
             is_price_col = col_idx == len(columns) - 1
 
@@ -402,11 +436,8 @@ class RowExpander:
             else:
                 value = self._get_value(data, col_config, row_number)
 
-            # 更新单元格
-            for para in cell.paragraphs:
-                para.text = ""
-
-            cell.text = str(value)
+            # 更新单元格（保留原有格式）
+            self._set_cell_text(cell, str(value))
 
     def _merge_cells_by_discount(self, table: Table, start_row: int, merge_info: dict, col_count: int, discount_template: str = None) -> None:
         """按折扣率合并单元格
@@ -469,9 +500,9 @@ class RowExpander:
         start_cell = table.rows[start_row].cells[col_idx]
         end_cell = table.rows[end_row].cells[col_idx]
 
-        # 设置合并后的文本内容
+        # 设置合并后的文本内容（保留原有格式）
         cell_text = discount_template.format(discount=discount)
-        start_cell.text = cell_text
+        self._set_cell_text(start_cell, cell_text)
 
         # 从第二行开始，将单元格的 vMerge 设置为 'merge'，表示合并到第一个单元格
         for row_idx in range(start_row + 1, end_row + 1):
@@ -490,8 +521,8 @@ class RowExpander:
             vMerge.set(qn('w:val'), 'merge')
             tcPr.append(vMerge)
 
-            # 清空单元格的文本
-            cell.text = ""
+            # 清空单元格的文本（保留格式）
+            self._set_cell_text(cell, "")
 
         logger.info(f"Merged rows {start_row}-{end_row} at column {col_idx} with discount {discount}%")
 

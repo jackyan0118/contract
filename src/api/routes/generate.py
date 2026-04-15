@@ -107,8 +107,6 @@ async def _do_generate_document(
             detail_groups[key].append(d)
 
         logger.info(f"明细分组结果: {len(detail_groups)} 组")
-        for key, group in detail_groups.items():
-            logger.info(f"  组 {key}: {len(group)} 条明细")
 
         # 5. 为每个分组匹配模板并生成文档
         #    构建每个分组的匹配数据
@@ -127,14 +125,12 @@ async def _do_generate_document(
                 "品牌编号": pp,
                 "物料生成来源": lyxh,
             }
-            logger.info(f"匹配数据: {match_data}")
 
             # 查找匹配的模板
             for rule in rules:
                 for cond in rule.条件:
                     if cond.match(match_data):
                         template_groups.append((rule, group_details))
-                        logger.info(f"匹配成功: {rule.id} -> {len(group_details)} 条明细")
                         break
 
         logger.info(f"模板匹配结果: {len(template_groups)} 个模板")

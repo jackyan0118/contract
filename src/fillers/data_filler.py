@@ -9,6 +9,7 @@ from decimal import Decimal
 from enum import Enum
 
 from docx import Document
+from docx.shared import Pt
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
@@ -85,6 +86,10 @@ class DataFiller:
             ">=": self._op_greater_equal,
             "<=": self._op_less_equal,
         }
+        # BM映射表缓存
+        self._bm_to_id_cache: Optional[Dict[str, int]] = None
+        self._bm_to_id_cache_time: float = 0
+        self._bm_to_id_cache_ttl: float = 3600  # 缓存1小时
 
     def fill_paragraphs(
         self,
@@ -113,14 +118,26 @@ class DataFiller:
             # 替换变量占位符
             text = self._replace_variables(text, data)
 
-            # 更新段落文本（保留格式）
+            # 更新段落文本，强制使用微软雅黑和小五号字体
             if text != para.text:
                 for run in para.runs:
                     run.text = ""
                 if para.runs:
                     para.runs[0].text = text
+                    para.runs[0].font.name = "微软雅黑"
+                    try:
+                        para.runs[0].font.eastAsia = "微软雅黑"
+                    except Exception:
+                        pass
+                    para.runs[0].font.size = Pt(9)
                 else:
-                    para.add_run(text)
+                    new_run = para.add_run(text)
+                    new_run.font.name = "微软雅黑"
+                    try:
+                        new_run.font.eastAsia = "微软雅黑"
+                    except Exception:
+                        pass
+                    new_run.font.size = Pt(9)
 
     def fill_table(
         self,
@@ -161,10 +178,23 @@ class DataFiller:
                 cell = row.cells[col_idx]
                 value = self._get_cell_value(data, col_config)
 
-                # 更新单元格文本
-                for para in cell.paragraphs:
-                    para.text = ""
-                cell.text = str(value)
+                # 更新单元格文本，强制使用微软雅黑和小五号字体
+                if cell.paragraphs:
+                    para = cell.paragraphs[0]
+                    # 彻底清除所有runs，只保留一个
+                    for run in para.runs:
+                        run.text = ""
+                    # 如果没有runs，添加一个空的
+                    if not para.runs:
+                        para.add_run("")
+                    # 设置新文本
+                    para.runs[0].text = str(value)
+                    para.runs[0].font.name = "微软雅黑"
+                    try:
+                        para.runs[0].font.eastAsia = "微软雅黑"
+                    except Exception:
+                        pass
+                    para.runs[0].font.size = Pt(9)
 
     def filter_data(
         self,
@@ -265,23 +295,6 @@ class DataFiller:
             return value
 
         return value
-
-    def __init__(self):
-        self.operators = {
-            "=": self._op_equals,
-            "!=": self._op_not_equals,
-            "contains": self._op_contains,
-            "in": self._op_in,
-            "not_in": self._op_not_in,
-            ">": self._op_greater,
-            "<": self._op_less,
-            ">=": self._op_greater_equal,
-            "<=": self._op_less_equal,
-        }
-        # BM映射表缓存
-        self._bm_to_id_cache: Optional[Dict[str, int]] = None
-        self._bm_to_id_cache_time: float = 0
-        self._bm_to_id_cache_ttl: float = 3600  # 缓存1小时
 
     def _get_bm_to_id_map(self) -> Dict[str, int]:
         """获取BM到ID的映射表
@@ -455,10 +468,12 @@ class DataFiller:
                         for src_para, dst_para in zip(src_cell.paragraphs, dst_cell.paragraphs):
                             for src_run, dst_run in zip(src_para.runs, dst_para.runs):
                                 new_run = dst_para.add_run(src_run.text)
-                                # 复制格式
-                                if src_run.font.name:
-                                    new_run.font.name = src_run.font.name
-                                if src_run.font.size:
-                                    new_run.font.size = src_run.font.size
+                                # 强制使用微软雅黑和小五号字体
+                                new_run.font.name = "微软雅黑"
+                                try:
+                                    new_run.font.eastAsia = "微软雅黑"
+                                except Exception:
+                                    pass
+                                new_run.font.size = Pt(9)
                 else:
                     table.add_row()
