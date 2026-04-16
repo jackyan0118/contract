@@ -59,6 +59,24 @@ table:
     start: '{{#明细表}}'
 
 speeches:
+- id: 话术1.2
+  mutex_group: A
+  type: conditional
+  conditions:
+  - field: DJZ
+    operator: in
+    value: 
+    - '42'
+    - '83'
+  - field: SFJC
+    operator: '='
+    value: '0'
+  - field: BNGHJLXZ
+    operator: in
+    value:
+    - '7'
+    - '8'
+  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类 检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。'
 - id: 话术1.1
   mutex_group: A
   type: conditional
@@ -77,25 +95,6 @@ speeches:
     - '7'
     - '8'
   content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省医疗保障局发布的《关于公布肝功生化类检测试剂省际联盟集中带量采购中选结果的通知》（赣集采办字〔2023〕14号）中附件2.肝功生化类检测试剂省际联盟集中带量采购中选供应清单为准。'
-- id: 话术1.2
-  mutex_group: A
-  type: conditional
-  conditions:
-  - field: DJZ
-    operator: in
-    value: 
-    - '42'
-    - '83'
-  - field: SFJC
-    operator: '='
-    value: '0'
-  - field: BNGHJLXZ
-    operator: 
-    operator: in
-    value:
-    - '7'
-    - '8'
-  content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类 检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。'
 - id: 话术2.1
   mutex_group: B
   type: conditional
