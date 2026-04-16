@@ -12,6 +12,12 @@ detail_filter:
     - field: CPXF_BM
       operator: '='
       value: '14'
+  - conditions:
+    - field: WLDM
+      operator: in
+      value: 
+      - '41000010371'
+      - '41000010372'
 
 sort_rules:
 - name: 检验套餐
