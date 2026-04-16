@@ -72,7 +72,7 @@ speeches:
     operator: '='
     value: '0'
   - field: BNGHJLXZ
-    operator: 'not in'
+    operator: 'not_in'
     value: 
     - '7'
     - '8'
