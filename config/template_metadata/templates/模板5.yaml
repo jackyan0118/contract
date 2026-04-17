@@ -80,7 +80,7 @@ table:
     start: '{{#明细表}}'
 
 speeches:
-- id: 话术1.2
+- id: 话术1.1
   mutex_group: A
   type: conditional
   conditions:
@@ -100,7 +100,7 @@ speeches:
     - '7'
     - '8'
   content: '其余肝功集采项目的卓越生化试剂供货价=肝功生化类检测试剂省际联盟集中带量采购中选结果中的试剂中标价*【80】%，前述试剂中标价格，以江西省药品和医用耗材招采管理系统内《关于调整部分肝功、肾功和心肌酶生化类检测试剂集采中选产品价格的通知》中的附件：肝功、肾功和心肌酶生化类检测试剂集采中选产品价格调整表内价格为准。'
-- id: 话术1.1
+- id: 话术1.2
   mutex_group: A
   type: conditional
   conditions:

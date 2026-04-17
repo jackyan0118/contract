@@ -370,11 +370,15 @@ class DataFiller:
 
     def _op_in(self, field_value: Any, expected: List[Any]) -> bool:
         """在列表中操作符"""
-        return field_value in expected
+        field_str = str(field_value).strip()
+        expected_strs = [str(v).strip() for v in expected]
+        return field_str in expected_strs
 
     def _op_not_in(self, field_value: Any, expected: List[Any]) -> bool:
         """不在列表中操作符"""
-        return field_value not in expected
+        field_str = str(field_value).strip()
+        expected_strs = [str(v).strip() for v in expected]
+        return field_str not in expected_strs
 
     def _op_greater(self, field_value: Any, expected: Any) -> bool:
         """大于操作符"""
