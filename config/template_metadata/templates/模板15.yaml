@@ -1,9 +1,9 @@
 id: 模板15
-name: 质谱试剂产品供货价
-file: 模板15：质谱试剂产品供货价.docx
+name: 外购试剂（希森美康）生化产品供货价
+file: 模板15：外购试剂（希森美康）生化产品供货价.docx
 category: 外购试剂
 paragraph_placeholders:
-  标题: 质谱试剂产品供货价
+  标题: 外购试剂（希森美康）生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,9 +11,15 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '29'
+      value: '103'
+    - field: PP
+      operator: '='
+      value: '34'
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -41,6 +47,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

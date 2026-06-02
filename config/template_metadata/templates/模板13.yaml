@@ -1,9 +1,9 @@
-id: 模板34
-name: 外购试剂（其它）生化产品供货价
-file: 模板34：外购试剂（其它）生化产品供货价.docx
+id: 模板13
+name: 外购试剂（索灵）生化产品供货价
+file: 模板13：外购试剂（索灵）生化产品供货价.docx
 category: 外购试剂
 paragraph_placeholders:
-  标题: 外购（其它）生化产品供货价
+  标题: 外购试剂（索灵）生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -14,9 +14,12 @@ detail_filter:
       value: '103'
     - field: PP
       operator: '='
-      value: '99'
+      value: '28'
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -44,6 +47,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

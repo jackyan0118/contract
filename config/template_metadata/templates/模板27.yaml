@@ -1,9 +1,9 @@
 id: 模板27
-name: 外购试剂（北京柏定）生化产品供货价
-file: 模板27：外购试剂（北京柏定）生化产品供货价.docx
-category: 外购试剂
+name: 外购耗材产品供货价
+file: 模板27：外购耗材产品供货价.docx
+category: 外购耗材
 paragraph_placeholders:
-  标题: 外购（北京柏定）生化产品供货价
+  标题: 外购耗材产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,12 +11,24 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '103'
-    - field: PP
-      operator: '='
-      value: '72'
+      value: '116'
+    - field: WLDM
+      operator: '!='
+      value: '41000010371'
+    - field: WLDM
+      operator: '!='
+      value: '41000010372'
+
+sort_rules:
+- name: 品牌
+  description: 品牌正序
+  field: PP
+  order: asc
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -44,6 +56,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

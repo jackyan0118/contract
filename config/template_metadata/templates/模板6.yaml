@@ -1,9 +1,9 @@
-id: 模板29
-name: 外购试剂（质谱生物）生化产品供货价
-file: 模板29：外购试剂（质谱生物）生化产品供货价.docx
-category: 外购试剂
+id: 模板6
+name: KHB Polaris品牌北极星生化产品供货价
+file: 模板6：KHB Polaris品牌北极星生化产品供货价.docx
+category: 北极星生化
 paragraph_placeholders:
-  标题: 外购（质谱生物）生化产品供货价
+  标题: KHB Polaris品牌北极星生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,25 +11,35 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '103'
-    - field: PP
-      operator: '='
-      value: '31'
+      value: '24'
+
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
-  - name: SAP代码
+  - name: 物料编码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 类别
+  - name: 分类
     source_field: JYTC_NAME
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
-  - name: 包装规格
+  - name: 规格
     source_field: GG
     source_table: UF_HTJGKST_DT1
   - name: 零售价
@@ -44,6 +54,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

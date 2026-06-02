@@ -1,9 +1,9 @@
-id: 模板32
-name: 外购试剂（西门子）生化产品供货价
-file: 模板32：外购试剂（西门子）生化产品供货价.docx
-category: 外购试剂
+id: 模板9
+name: 质谱试剂产品供货价
+file: 模板9：质谱试剂产品供货价.docx
+category: 质谱试剂
 paragraph_placeholders:
-  标题: 外购（西门子）生化产品供货价
+  标题: 质谱试剂产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,12 +11,22 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '103'
-    - field: PP
-      operator: '='
-      value: '30'
+      value: '29'
+
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -44,6 +54,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

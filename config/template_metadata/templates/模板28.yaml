@@ -1,22 +1,15 @@
 id: 模板28
-name: 外购试剂（宁波普瑞柏）生化产品供货价
-file: 模板28：外购试剂（宁波普瑞柏）生化产品供货价.docx
-category: 外购试剂
+name: 试剂（其它）产品供货价
+file: 模板28：试剂（其它）产品供货价.docx
+category: 其它
 paragraph_placeholders:
-  标题: 外购（宁波普瑞柏）生化产品供货价
+  标题: 试剂（其它）产品供货价
   金额单位: 元
 
-detail_filter:
-  condition_groups:
-  - conditions:
-    - field: CPXF_BM
-      operator: '='
-      value: '103'
-    - field: PP
-      operator: '='
-      value: '50'
-
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -44,6 +37,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

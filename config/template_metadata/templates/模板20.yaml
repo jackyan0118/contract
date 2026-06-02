@@ -1,9 +1,9 @@
 id: 模板20
-name: 第三方（和光）生化产品供货价
-file: 模板20：第三方（和光）生化产品供货价.docx
+name: 外购试剂（宁波普瑞柏）生化产品供货价
+file: 模板20：外购试剂（宁波普瑞柏）生化产品供货价.docx
 category: 外购试剂
 paragraph_placeholders:
-  标题: 第三方（和光）生化产品供货价
+  标题: 外购试剂（宁波普瑞柏）生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,21 +11,15 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '102'
-    - field: DJZ
-      operator: in
-      value:
-      - '74'
-      - '75'
-      - '76'
-
-sort_rules:
-- name: 产品类别编码
-  description: 产品类别编码正序
-  field: CPXF_BM
-  order: asc
+      value: '103'
+    - field: PP
+      operator: '='
+      value: '50'
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -53,6 +47,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

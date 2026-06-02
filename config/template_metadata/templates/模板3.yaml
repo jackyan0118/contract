@@ -1,9 +1,9 @@
-id: 模板35
-name: 外购耗材产品供货价
-file: 模板35：外购耗材产品供货价.docx
-category: 外购试剂
+id: 模板3
+name: KHB、科华生物品牌通用生化产品供货价
+file: 模板3：KHB、科华生物品牌通用生化产品供货价.docx
+category: 通用生化
 paragraph_placeholders:
-  标题: 外购耗材产品供货价
+  标题: KHB、科华生物品牌通用生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -11,28 +11,35 @@ detail_filter:
   - conditions:
     - field: CPXF_BM
       operator: '='
-      value: '116'
-    - field: WLDM
-      operator: '!='
-      value: '41000010371'
-    - field: WLDM
-      operator: '!='
-      value: '41000010372'
+      value: '21'
+
+sort_rules:
+- name: 检验套餐
+  description: 检验套餐正序
+  field: JYTC_NAME
+  order: asc
+- name: 规格
+  description: 规格正序
+  field: GG
+  order: asc
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
-  - name: SAP代码
+  - name: 物料编码
     source_field: WLDM
     source_table: UF_HTJGKST_DT1
-  - name: 类别
-    source_field: JYTC_NAME
+  - name: 简称
+    source_field: XMJC
     source_table: UF_HTJGKST_DT1
   - name: 品名
     source_field: WLMS
     source_table: UF_HTJGKST_DT1
-  - name: 包装规格
+  - name: 规格型号
     source_field: GG
     source_table: UF_HTJGKST_DT1
   - name: 零售价
@@ -47,6 +54,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'

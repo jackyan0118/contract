@@ -82,6 +82,12 @@ async def _do_generate_document(
         rules = rule_loader.load()
         logger.info(f"加载了 {len(rules)} 条模板规则")
 
+        # 分离普通规则与保底规则
+        fallback_rule = next((r for r in rules if r.fallback), None)
+        normal_rules = [r for r in rules if not r.fallback]
+        if fallback_rule:
+            logger.info(f"启用保底模板: {fallback_rule.id}")
+
         # 定义分组关键词提取函数
         def get_detail_key(d: dict) -> tuple:
             """从明细中提取关键词组合"""
@@ -111,6 +117,7 @@ async def _do_generate_document(
         # 5. 为每个分组匹配模板并生成文档
         #    构建每个分组的匹配数据
         template_groups: list[tuple[TemplateRule, list[dict]]] = []
+        unmatched_group_details: list[list[dict]] = []
 
         for key, group_details in detail_groups.items():
             cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp, lyxh = key
@@ -126,12 +133,34 @@ async def _do_generate_document(
                 "物料生成来源": lyxh,
             }
 
-            # 查找匹配的模板
-            for rule in rules:
+            # 在普通规则中查找匹配的模板
+            matched = False
+            for rule in normal_rules:
                 for cond in rule.条件:
                     if cond.match(match_data):
                         template_groups.append((rule, group_details))
+                        matched = True
                         break
+                if matched:
+                    break
+
+            if not matched:
+                unmatched_group_details.append(group_details)
+
+        # 未匹配 group 路由到保底模板（若有）
+        if fallback_rule and unmatched_group_details:
+            merged_unmatched: list[dict] = []
+            for g in unmatched_group_details:
+                merged_unmatched.extend(g)
+            template_groups.append((fallback_rule, merged_unmatched))
+            logger.info(
+                f"保底模板收纳 {len(unmatched_group_details)} 个未匹配组, "
+                f"共 {len(merged_unmatched)} 行明细"
+            )
+        elif unmatched_group_details:
+            logger.info(
+                f"有 {len(unmatched_group_details)} 个未匹配组未配置保底模板, 已丢弃"
+            )
 
         logger.info(f"模板匹配结果: {len(template_groups)} 个模板")
 

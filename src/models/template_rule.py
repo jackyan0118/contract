@@ -53,6 +53,7 @@ class TemplateRule(BaseModel):
     file: str = Field(description="模板文件路径")
     条件: List[RuleCondition] = Field(default_factory=list, description="条件列表（AND关系）")
     排序规则: Optional[str] = Field(default=None, description="排序规则")
+    fallback: bool = Field(default=False, description="是否为保底模板（未匹配明细统一进此模板）")
 
     def match(self, data: Dict[str, Any]) -> bool:
         """检查数据是否匹配此模板（所有条件都满足）"""

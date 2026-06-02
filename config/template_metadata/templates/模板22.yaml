@@ -1,9 +1,9 @@
 id: 模板22
-name: 外购试剂（和光）生化产品供货价
-file: 模板22：外购试剂（和光）生化产品供货价.docx
+name: 外购试剂（上海睿康）生化产品供货价
+file: 模板22：外购试剂（上海睿康）生化产品供货价.docx
 category: 外购试剂
 paragraph_placeholders:
-  标题: 外购（和光）生化产品供货价
+  标题: 外购试剂（上海睿康）生化产品供货价
   金额单位: 元
 
 detail_filter:
@@ -14,9 +14,12 @@ detail_filter:
       value: '103'
     - field: PP
       operator: '='
-      value: '48'
+      value: '26'
 
 table:
+  placeholders:
+    start: '{{#明细表}}'
+    end: '{{/明细表}}'
   columns:
   - name: 序号
     type: auto_number
@@ -44,6 +47,3 @@ table:
     transform: currency
     params:
       decimals: 2
-  placeholders:
-    end: '{{/明细表}}'
-    start: '{{#明细表}}'
