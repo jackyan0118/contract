@@ -6,8 +6,9 @@ from copy import deepcopy
 
 from docx import Document
 from docx.shared import Pt
-from docx.table import Table
+from docx.table import Table, _Cell
 from docx.oxml import OxmlElement
+from docx.oxml.ns import qn as _qn
 
 from src.fillers.format_preserver import FormatPreserver
 
@@ -19,6 +20,19 @@ class RowExpander:
 
     def __init__(self):
         self.format_preserver = FormatPreserver()
+
+    @staticmethod
+    def _row_cells(row, table: Table) -> list:
+        """快速获取 row 的 _Cell 列表（避免 Row.cells 触发 vMerge/gridSpan 的 XPath 查询）"""
+        return [_Cell(tc, table) for tc in row._tr.tc_lst]
+
+    @staticmethod
+    def _row_cell_at(row, table: Table, idx: int):
+        """快速获取 row 的第 idx 个 _Cell"""
+        tc_lst = row._tr.tc_lst
+        if idx < 0 or idx >= len(tc_lst):
+            return None
+        return _Cell(tc_lst[idx], table)
 
     def _set_cell_text(self, cell: Any, text: str) -> None:
         """设置单元格文本，强制使用微软雅黑和小五号字体"""
@@ -95,9 +109,10 @@ class RowExpander:
             # 只有1条数据：清空占位行，填充该数据
             if start_row < len(table.rows):
                 placeholder_row = table.rows[start_row]
-                for cell in placeholder_row.cells:
+                # 关键优化：用 tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+                for cell in self._row_cells(placeholder_row, table):
                     self._set_cell_text(cell, "")
-                self._fill_row(placeholder_row, data_list[0], columns, 1, False, None, discount_template)
+                self._fill_row(placeholder_row, table, data_list[0], columns, 1, False, None, discount_template)
             logger.info(f"Filled 1 row (replaced placeholder)")
         else:
             # 大于1条数据：
@@ -109,19 +124,29 @@ class RowExpander:
             # 6. 对话术行进行文本替换
 
             # 1. 找到话术行（保存 Tr 元素而不是索引）
+            # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
             speech_row = None
             speech_row_texts = []
             for row in table.rows:
-                row_text = "".join(cell.text for cell in row.cells)
+                row_text = "".join(
+                    "".join(p.text for p in tc.iter(_qn("w:p")))
+                    for tc in row._tr.tc_lst
+                )
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
                     speech_row = row
-                    speech_row_texts = [cell.text for cell in row.cells]
+                    speech_row_texts = [
+                        "".join(p.text for p in tc.iter(_qn("w:p")))
+                        for tc in row._tr.tc_lst
+                    ]
                     break
 
             # 如果没有找到话术行，使用最后一行
             if not speech_row and len(table.rows) > 1:
                 speech_row = table.rows[-1]
-                speech_row_texts = [cell.text for cell in speech_row.cells]
+                speech_row_texts = [
+                    "".join(p.text for p in tc.iter(_qn("w:p")))
+                    for tc in speech_row._tr.tc_lst
+                ]
 
             if not speech_row:
                 logger.warning("No speech row found")
@@ -141,9 +166,9 @@ class RowExpander:
 
             # 2. 保存模板行的边框格式（不包括 tcW，因为 python-docx 会自动调整 tcW 为 tblGrid 的值）
             template_row = table.rows[template_row_idx] if template_row_idx >= 0 else table.rows[start_row]
+            # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
             template_cell_formats = []
-            for cell in template_row.cells:
-                tc = cell._element
+            for tc in template_row._tr.tc_lst:
                 tcPr = tc.find('.//{*}tcPr')
                 if tcPr is not None:
                     # 复制整个 tcPr，但会覆盖 tcW 为 tblGrid 的值
@@ -151,11 +176,25 @@ class RowExpander:
                 else:
                     template_cell_formats.append(None)
 
+            # 2.5 关键优化：预计算每列要复制的子元素（排除 tcW）
+            # 原代码内层循环里 dst_tcPr.find(tag) 是 O(F)，每行每列每子元素都做 = O(N*C*F²)
+            # 对新建行 dst_tcPr 仅有 tcW，非 tcW 子元素无重复，预计算后省去 find
+            cells_children_to_copy: list[list] = []
+            for fmt in template_cell_formats:
+                if fmt is None:
+                    cells_children_to_copy.append([])
+                else:
+                    cells_children_to_copy.append(
+                        [c for c in fmt if not c.tag.endswith('tcW')]
+                    )
+
             # 3. 删除从 start_row 开始到话术行之前的所有行（不删除话术行本身）
+            # 先一次性缓存所有行（避免每次访问 table.rows[idx] 触发 findall，O(N²) → O(N)）
+            all_rows_for_remove = list(table.rows)
             rows_to_remove = []
             speech_tr = speech_row._tr
-            for idx in range(start_row, len(table.rows) - 1):
-                row_tr = table.rows[idx]._tr
+            for idx in range(start_row, len(all_rows_for_remove) - 1):
+                row_tr = all_rows_for_remove[idx]._tr
                 # 不删除话术行
                 if row_tr is speech_tr:
                     continue
@@ -167,44 +206,48 @@ class RowExpander:
                     parent.remove(tr)
 
             # 4. 在话术行之前插入 N 行数据
-            target_cols = len(table.rows[0].cells) if table.rows else 7
+            # 缓存行列表获取列数（避免多次触发 findall）
+            _base_rows = list(table.rows)
+            # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+            target_cols = len(_base_rows[0]._tr.tc_lst) if _base_rows else 7
 
-            # 获取话术行在表格中的位置
-            tr_list = list(tbl)
-            speech_position = tr_list.index(speech_tr)
-
-            for i in range(data_count):
+            # 先收集所有新行（追加到表末尾，O(N) 总体），最后一次性移动到话术行之前
+            # 避免每行都调 tbl.insert(pos, ...)，那是 O(N²)
+            new_trs: list = []
+            for _ in range(data_count):
                 # 创建新行
                 new_row = table.add_row()
                 # 删除多余的单元格，只保留 target_cols 个
-                while len(new_row.cells) > target_cols:
+                # 关键优化：用 _tr.tc_lst 替代 new_row.cells
+                while len(new_row._tr.tc_lst) > target_cols:
                     tr = new_row._tr
                     tc_list = tr.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}tc')
                     if len(tc_list) > target_cols:
                         tr.remove(tc_list[-1])
 
+                # 关键优化：用 _tr.tc_lst 替代 new_row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+                # 缓存 _Cell 包装结果（_Cell.__init__ 本身很快，不触发额外查询）
+                new_cells = [_Cell(tc, table) for tc in new_row._tr.tc_lst]
                 # 应用单元格格式
-                for cell_idx in range(len(new_row.cells)):
+                for cell_idx in range(len(new_cells)):
                     # 获取列宽（从 tblGrid）
                     col_width = col_widths[cell_idx] if cell_idx < len(col_widths) else 0
 
                     # 复制模板行的格式（边框等）
-                    if cell_idx < len(template_cell_formats) and template_cell_formats[cell_idx] is not None:
-                        dst_tc = new_row.cells[cell_idx]._element
+                    if cell_idx < len(cells_children_to_copy) and cells_children_to_copy[cell_idx]:
+                        dst_tc = new_cells[cell_idx]._element
                         dst_tcPr = dst_tc.find('.//{*}tcPr')
                         if dst_tcPr is None:
                             dst_tcPr = OxmlElement('w:tcPr')
                             dst_tc.insert(0, dst_tcPr)
 
-                        # 复制除了 tcW 之外的所有格式
-                        for src_child in template_cell_formats[cell_idx]:
-                            if not src_child.tag.endswith('tcW'):
-                                if dst_tcPr.find(src_child.tag) is None:
-                                    dst_tcPr.append(deepcopy(src_child))
+                        # 直接 append 所有预筛选的非 tcW 子元素（无需 find 检查，新建行 dst_tcPr 只有 tcW）
+                        for src_child in cells_children_to_copy[cell_idx]:
+                            dst_tcPr.append(deepcopy(src_child))
 
                     # 设置 tcW 为 tblGrid 的列宽
                     if col_width > 0:
-                        dst_tc = new_row.cells[cell_idx]._element
+                        dst_tc = new_cells[cell_idx]._element
                         dst_tcPr = dst_tc.find('.//{*}tcPr')
                         if dst_tcPr is None:
                             dst_tcPr = OxmlElement('w:tcPr')
@@ -218,23 +261,34 @@ class RowExpander:
                         new_tcW.set('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}type', 'dxa')
                         dst_tcPr.append(new_tcW)
 
-                # 在话术行之前插入
-                tbl.insert(speech_position + i, new_row._tr)
+                new_trs.append(new_row._tr)
+
+            # 一次性把所有新行移到话术行之前（addprevious 是 O(1) 每次）
+            # 倒序遍历以保持原顺序：r0, r1, r2, ..., rN-1
+            for tr in reversed(new_trs):
+                speech_tr.addprevious(tr)
 
             # 5. 填充数据行
+            # 关键修复：缓存 table.rows，避免每次循环都触发 findall，O(N²) → O(N)
+            all_rows = list(table.rows)
+            last_valid_idx = len(all_rows) - 1
             for row_idx, data in enumerate(data_list):
-                if start_row + row_idx < len(table.rows) - 1:
-                    row = table.rows[start_row + row_idx]
+                target_idx = start_row + row_idx
+                if target_idx < last_valid_idx:
+                    row = all_rows[target_idx]
                     # 判断该行是否是合并单元格的主单元格
                     is_merge_start = row_idx in merge_info
-                    self._fill_row(row, data, columns, row_idx + 1, is_merge_start, merge_info, discount_template)
+                    self._fill_row(row, table, data, columns, row_idx + 1, is_merge_start, merge_info, discount_template)
 
             # 6. 对话术行进行文本替换（保留原有格式）
             if speech_row_texts:
-                last_row = table.rows[-1]
+                # 复用 all_rows 缓存，避免再次 findall
+                last_row = all_rows[-1]
+                # 关键优化：用 _tr.tc_lst 替代 last_row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+                last_row_tcs = last_row._tr.tc_lst
                 for cell_idx, text in enumerate(speech_row_texts):
-                    if cell_idx < len(last_row.cells):
-                        self._set_cell_text(last_row.cells[cell_idx], text)
+                    if cell_idx < len(last_row_tcs):
+                        self._set_cell_text(_Cell(last_row_tcs[cell_idx], table), text)
 
             # 7. 按折扣率合并单元格（供货价列）
             # merge_info 格式：{start_idx: (template_string, span_count)}
@@ -265,6 +319,11 @@ class RowExpander:
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
 
+        # 关键优化：缓存 table.rows（关键 O(N²) → O(N)）
+        # table.rows[i] 内部每次都触发 findall，O(N)；循环内多次访问 = O(N²)
+        all_rows = list(table.rows)
+        total_rows = len(all_rows)
+
         # 遍历合并信息
         for row_idx, info in merge_info.items():
             if isinstance(info, tuple) and len(info) == 2:
@@ -279,15 +338,16 @@ class RowExpander:
             actual_end_row = actual_start_row + span_count - 1
 
             # 检查行索引是否有效（包括起始行和结束行）
-            if actual_start_row >= len(table.rows) or actual_end_row >= len(table.rows):
-                logger.warning(f"Merge info index out of range: start={actual_start_row}, end={actual_end_row}, table_rows={len(table.rows)}")
+            if actual_start_row >= total_rows or actual_end_row >= total_rows:
+                logger.warning(f"Merge info index out of range: start={actual_start_row}, end={actual_end_row}, table_rows={total_rows}")
                 continue
 
             # 设置合并区域内每一行的边框
             for i in range(span_count):
                 current_row_idx = actual_start_row + i
-                cell = table.rows[current_row_idx].cells[price_col_idx]
-                tc = cell._element
+                # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+                tc = all_rows[current_row_idx]._tr.tc_lst[price_col_idx]
+                cell = _Cell(tc, table)
                 tcPr = tc.find('.//{*}tcPr')
                 if tcPr is None:
                     tcPr = OxmlElement('w:tcPr')
@@ -332,7 +392,9 @@ class RowExpander:
                         tcBorders.remove(bottom)
 
             # 获取起始行的单元格，设置合并后的文本（保留原有格式）
-            start_cell = table.rows[actual_start_row].cells[price_col_idx]
+            # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+            start_tc = all_rows[actual_start_row]._tr.tc_lst[price_col_idx]
+            start_cell = _Cell(start_tc, table)
             cell_text = template_str if template_str else ""
             self._set_cell_text(start_cell, cell_text)
 
@@ -354,10 +416,12 @@ class RowExpander:
 
             # 从第二行开始设置 vMerge 为 merge
             for merge_row_idx in range(actual_start_row + 1, actual_end_row + 1):
-                merge_cell = table.rows[merge_row_idx].cells[price_col_idx]
+                # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+                merge_tc = all_rows[merge_row_idx]._tr.tc_lst[price_col_idx]
+                merge_cell = _Cell(merge_tc, table)
 
                 # 获取tc元素
-                tc = merge_cell._element
+                tc = merge_tc
                 tcPr = tc.find('.//{*}tcPr')
                 if tcPr is None:
                     tcPr = OxmlElement('w:tcPr')
@@ -381,6 +445,7 @@ class RowExpander:
     def _fill_row(
         self,
         row,
+        table: Table,
         data: Dict[str, Any],
         columns: List[Dict[str, str]],
         row_number: int,
@@ -402,13 +467,17 @@ class RowExpander:
         if merge_info is None:
             merge_info = {}
 
+        # 关键优化：用 _tr.tc_lst 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+        # 缓存 _Cell 包装结果（_Cell.__init__ 本身很快）
+        row_cells = [_Cell(tc, table) for tc in row._tr.tc_lst]
+        last_col_idx = len(columns) - 1
         for col_idx, col_config in enumerate(columns):
-            if col_idx >= len(row.cells):
+            if col_idx >= len(row_cells):
                 break
 
-            cell = row.cells[col_idx]
+            cell = row_cells[col_idx]
             # 判断是否是供货价列（最后一列）
-            is_price_col = col_idx == len(columns) - 1
+            is_price_col = col_idx == last_col_idx
 
             if is_price_col:
                 # 供货价列处理逻辑

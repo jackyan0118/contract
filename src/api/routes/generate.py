@@ -1,9 +1,15 @@
 """单文件生成接口."""
 
+import io
+import os
+import time
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+import cProfile
+import pstats
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -30,6 +36,9 @@ from src.utils.logger import get_logger
 
 logger = get_logger("api.routes.generate")
 
+# 是否启用 cProfile（通过环境变量控制，避免影响生产性能）
+ENABLE_CPROFILE = os.getenv("ENABLE_CPROFILE", "0") == "1"
+
 router = APIRouter()
 
 
@@ -39,8 +48,18 @@ async def _do_generate_document(
     """执行文档生成的内部逻辑"""
     wybs = request.wybs
 
+    # 启动 cProfile
+    profiler: Optional[cProfile.Profile] = None
+    if ENABLE_CPROFILE:
+        profiler = cProfile.Profile()
+        profiler.enable()
+        logger.info(f"[CPROFILE] enabled for wybs={wybs}")
+
+    t_total_start = time.time()
+
     try:
         # 1. 查询报价单数据
+        _t0 = time.time()
         quote_data = get_quotation_by_wybs(wybs)
         if not quote_data:
             raise HTTPException(
@@ -53,14 +72,18 @@ async def _do_generate_document(
 
         # 2. 查询明细数据
         detail_data_list = get_quotation_details(wybs)
+        logger.info(f"[TIMING] SQL queries: {time.time()-_t0:.3f}s, detail_count={len(detail_data_list)}")
 
         # 3. 转换数据
+        _t0 = time.time()
         transformer = get_transformer()
         quotation = transformer.transform_quotation(quote_data)
         details = transformer.transform_quotation_details(detail_data_list)
+        logger.info(f"[TIMING] data transform (Pydantic/Decimal): {time.time()-_t0:.3f}s")
 
         # 转换为字典格式供模板匹配使用
         # 将所有key转换为大写，与模板配置保持一致
+        _t0 = time.time()
         quote_dict = asdict(quotation) if hasattr(quotation, "__dataclass_fields__") else quotation
         if quote_dict:
             quote_dict = {k.upper(): v for k, v in quote_dict.items()}
@@ -74,13 +97,15 @@ async def _do_generate_document(
             # 将所有key转换为大写
             d_dict_upper = {k.upper(): v for k, v in d_dict.items()}
             details_dict.append(d_dict_upper)
+        logger.info(f"[TIMING] asdict + uppercase: {time.time()-_t0:.3f}s")
 
         logger.info(f"明细数据字段: {list(details_dict[0].keys()) if details_dict else 'none'}")
 
         # 4. 按关键词组合分组明细数据
+        _t0 = time.time()
         rule_loader = RuleLoader()
         rules = rule_loader.load()
-        logger.info(f"加载了 {len(rules)} 条模板规则")
+        logger.info(f"[TIMING] load rules: {time.time()-_t0:.3f}s, count={len(rules)}")
 
         # 分离普通规则与保底规则
         fallback_rule = next((r for r in rules if r.fallback), None)
@@ -105,17 +130,20 @@ async def _do_generate_document(
             return (cpxf_bm, djz, sfjc, bnghjlxz, wldm, pp, lyxh)
 
         # 按关键词组合分组
+        _t0 = time.time()
         detail_groups: dict[tuple, list] = {}
         for d in details_dict:
             key = get_detail_key(d)
             if key not in detail_groups:
                 detail_groups[key] = []
             detail_groups[key].append(d)
+        logger.info(f"[TIMING] detail grouping: {time.time()-_t0:.3f}s")
 
         logger.info(f"明细分组结果: {len(detail_groups)} 组")
 
         # 5. 为每个分组匹配模板并生成文档
         #    构建每个分组的匹配数据
+        _t0 = time.time()
         template_groups: list[tuple[TemplateRule, list[dict]]] = []
         unmatched_group_details: list[list[dict]] = []
 
@@ -161,6 +189,7 @@ async def _do_generate_document(
             logger.info(
                 f"有 {len(unmatched_group_details)} 个未匹配组未配置保底模板, 已丢弃"
             )
+        logger.info(f"[TIMING] template matching: {time.time()-_t0:.3f}s, matched={len(template_groups)}")
 
         logger.info(f"模板匹配结果: {len(template_groups)} 个模板")
 
@@ -174,11 +203,13 @@ async def _do_generate_document(
             )
 
         # 去重（同一个模板可能匹配多个组，合并其明细）
+        _t0 = time.time()
         unique_templates: dict[str, tuple[TemplateRule, list[dict]]] = {}
         for rule, group_details in template_groups:
             if rule.id not in unique_templates:
                 unique_templates[rule.id] = (rule, [])
             unique_templates[rule.id][1].extend(group_details)
+        logger.info(f"[TIMING] dedup templates: {time.time()-_t0:.3f}s, unique={len(unique_templates)}")
 
         logger.info(f"去重后模板数: {len(unique_templates)}")
 
@@ -190,7 +221,9 @@ async def _do_generate_document(
         )
 
         results = []
+        _t_gen_total = time.time()
         for _template_id, (template, template_details) in unique_templates.items():
+            _t_one = time.time()
             result = generator.generate(
                 template=template,
                 quote_data=quote_dict,
@@ -199,6 +232,11 @@ async def _do_generate_document(
                 wybs=wybs,
             )
             results.append(result)
+            logger.info(
+                f"[TIMING] generate template {template.id}: {time.time()-_t_one:.3f}s, "
+                f"rows={len(template_details)}"
+            )
+        logger.info(f"[TIMING] all generate: {time.time()-_t_gen_total:.3f}s, count={len(unique_templates)}")
 
         # 收集成功的文件
         successful_files = []
@@ -249,8 +287,10 @@ async def _do_generate_document(
         zip_output_dir = str(full_download_dir)
 
         # 打包文件
+        _t0 = time.time()
         packer = FilePacker(output_dir=zip_output_dir)
         zip_path = packer.pack(successful_files, zip_filename)
+        logger.info(f"[TIMING] zip pack: {time.time()-_t0:.3f}s, files={len(successful_files)}")
 
         # 生成相对路径和完整URL
         relative_path = f"{date_dir}/{Path(zip_path).name}"
@@ -266,6 +306,7 @@ async def _do_generate_document(
             else settings.weaver.enabled
         )
         if weaver_enabled:
+            _t0 = time.time()
             try:
                 weaver_service = WeaverService(settings.weaver)
                 # 使用请求值或settings中的默认值
@@ -284,6 +325,7 @@ async def _do_generate_document(
                     logger.info(f"OA回写成功: billid={weaver_result.get('billid')}")
             except Exception as e:
                 logger.error(f"OA回写异常: {e}")
+            logger.info(f"[TIMING] OA writeback: {time.time()-_t0:.3f}s")
 
         # 返回数据
         data = GenerateSuccessData(
@@ -293,6 +335,10 @@ async def _do_generate_document(
             expires_in=settings.downloads.expires_in,
             templates_used=template_ids,
         )
+
+        # 总耗时日志
+        total_elapsed = time.time() - t_total_start
+        logger.info(f"[TIMING] TOTAL: {total_elapsed:.3f}s for wybs={wybs}")
 
         return success_response(
             data=data,
@@ -319,6 +365,19 @@ async def _do_generate_document(
                 "message": "文档生成失败，请稍后重试",
             },
         )
+    finally:
+        # 关闭 profiler 并输出统计
+        if profiler is not None:
+            profiler.disable()
+            stats_stream = io.StringIO()
+            ps = pstats.Stats(profiler, stream=stats_stream).sort_stats("cumulative")
+            ps.print_stats(30)  # top 30
+            logger.info(f"[CPROFILE] top 30 by cumulative time:\n{stats_stream.getvalue()}")
+
+            stats_tottime = io.StringIO()
+            ps2 = pstats.Stats(profiler, stream=stats_tottime).sort_stats("tottime")
+            ps2.print_stats(20)  # top 20 by self time
+            logger.info(f"[CPROFILE] top 20 by self time:\n{stats_tottime.getvalue()}")
 
 
 @router.post("/generate", response_model=ApiResponse[GenerateSuccessData])

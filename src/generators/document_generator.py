@@ -3,6 +3,7 @@
 import logging
 import re
 import shutil
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
@@ -10,6 +11,8 @@ from datetime import datetime
 
 from docx import Document
 from docx.shared import Pt
+from docx.table import _Cell
+from docx.oxml.ns import qn as _qn
 
 from src.readers.word_template_reader import WordTemplateReader
 from src.fillers.data_filler import DataFiller, FilterCondition
@@ -191,16 +194,25 @@ class DocumentGenerator:
                     / f"{template.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.docx"
                 )
             output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            _t = time.time()
             shutil.copy(template_path, output_path)
+            logger.info(f"[TIMING][docgen] shutil.copy: {time.time()-_t:.3f}s")
 
             # 打开文档
+            _t = time.time()
             doc = Document(output_path)
+            logger.info(f"[TIMING][docgen] Document() parse: {time.time()-_t:.3f}s")
 
             # 填充数据（带模板配置）
+            _t = time.time()
             self._fill_document(doc, template_config, quote_data, detail_data_list)
+            logger.info(f"[TIMING][docgen] _fill_document: {time.time()-_t:.3f}s, rows={len(detail_data_list)}")
 
             # 保存文档
+            _t = time.time()
             doc.save(output_path)
+            logger.info(f"[TIMING][docgen] doc.save: {time.time()-_t:.3f}s")
 
             logger.info(f"Generated document: {output_path}")
 
@@ -230,17 +242,34 @@ class DocumentGenerator:
             quote_data: 报价单主表数据
             detail_data_list: 明细数据列表
         """
+        # 0. 预处理：只算一次话术内容，避免后续 _fill_tables 和 _process_speeches 重复跑（O(S×N) 重复）
+        _t = time.time()
+        cached_speech_contents = None
+        if template_config and template_config.speeches:
+            cached_speech_contents = self._get_speech_contents(template_config, detail_data_list)
+        logger.info(f"[TIMING][docgen]   _get_speech_contents (cached): {time.time()-_t:.3f}s")
+
         # 1. 填充段落占位符
+        _t = time.time()
         self._fill_paragraphs(doc, template_config, quote_data)
+        logger.info(f"[TIMING][docgen]   _fill_paragraphs: {time.time()-_t:.3f}s")
 
         # 2. 填充表格（支持 detail_filter）
-        self._fill_tables(doc, template_config, detail_data_list, quote_data)
+        _t = time.time()
+        self._fill_tables(doc, template_config, detail_data_list, quote_data,
+                          cached_speech_contents=cached_speech_contents)
+        logger.info(f"[TIMING][docgen]   _fill_tables: {time.time()-_t:.3f}s")
 
         # 3. 处理话术（完整集成）- 传递明细数据用于话术条件判断
-        self._process_speeches(doc, template_config, detail_data_list)
+        _t = time.time()
+        self._process_speeches(doc, template_config, detail_data_list,
+                               cached_speech_contents=cached_speech_contents)
+        logger.info(f"[TIMING][docgen]   _process_speeches: {time.time()-_t:.3f}s")
 
         # 4. 修复表格列宽：将 autofit 改为 fixed，防止 WPS 渲染时列宽随内容变化
+        _t = time.time()
         self._fix_table_layout(doc)
+        logger.info(f"[TIMING][docgen]   _fix_table_layout: {time.time()-_t:.3f}s")
 
     def _fill_paragraphs(
         self, doc: Document, template_config: Optional[TemplateMetadataModel], data: Dict[str, Any]
@@ -289,6 +318,7 @@ class DocumentGenerator:
         template_config: Optional[TemplateMetadataModel],
         data_list: List[Dict[str, Any]],
         quote_data: Dict[str, Any] = None,
+        cached_speech_contents: Optional[List[str]] = None,
     ) -> None:
         """填充表格
 
@@ -308,10 +338,14 @@ class DocumentGenerator:
             speech_row_content = None
 
             # 第一遍：清除所有占位符并找到关键行
+            # 关键优化：用 _tr.tc_lst + cell.paragraphs 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
             for row_idx, row in enumerate(table.rows):
                 row_text = ""
-                for cell in row.cells:
-                    for para in cell.paragraphs:
+                # 关键优化：缓存 tc_lst（避免下面多次访问 row._tr.tc_lst）
+                row_tcs = row._tr.tc_lst
+                for tc in row_tcs:
+                    cell = _Cell(tc, table)  # _Cell 包装很廉价（仅存引用）
+                    for para in cell.paragraphs:  # _Paragraph 对象，支持 .text / .runs
                         row_text += para.text
 
                 # 检查是否是明细表模板行
@@ -319,7 +353,8 @@ class DocumentGenerator:
                     is_detail_table = True
                     template_row_idx = row_idx
                     # 清除标记文本（保留格式）
-                    for cell in row.cells:
+                    for tc in row_tcs:
+                        cell = _Cell(tc, table)
                         for para in cell.paragraphs:
                             new_text = para.text.replace("{{#明细表}}", "").replace(
                                 "{{/明细表}}", ""
@@ -332,10 +367,9 @@ class DocumentGenerator:
                     speech_row_idx = row_idx
                     # 保存话术行内容
                     speech_row_content = []
-                    for cell in row.cells:
-                        cell_text = ""
-                        for para in cell.paragraphs:
-                            cell_text += para.text
+                    for tc in row_tcs:
+                        cell = _Cell(tc, table)
+                        cell_text = "".join(p.text for p in cell.paragraphs)
                         speech_row_content.append(cell_text)
 
             # 如果没有找到 {{#明细表}} 占位符，但模板配置了 table.columns，则也视为明细表
@@ -388,6 +422,7 @@ class DocumentGenerator:
             )
 
             # 获取折扣话术模板
+            _t = time.time()
             self.row_expander.expand(
                 table,
                 grouped_data,
@@ -398,9 +433,13 @@ class DocumentGenerator:
                 has_speech_row,
                 merge_info,
             )
+            logger.info(f"[TIMING][docgen]     row_expander.expand: {time.time()-_t:.3f}s, rows={len(grouped_data)}")
 
-            # 获取话术内容
-            speech_contents = self._get_speech_contents(template_config, data_list)
+            # 获取话术内容（优先使用调用方缓存的结果，避免重复 process_speeches 调用）
+            if cached_speech_contents is not None:
+                speech_contents = cached_speech_contents
+            else:
+                speech_contents = self._get_speech_contents(template_config, data_list)
             full_speech = "\n".join(speech_contents)
 
             # 替换变量占位符
@@ -408,21 +447,27 @@ class DocumentGenerator:
                 full_speech = full_speech.replace(f"{{{{{var_name}}}}}", default_value)
 
             # 直接找到包含话术占位符的行，替换占位符
-            for row_idx, row in enumerate(table.rows):
+            # 关键优化：缓存 table.rows（此时表已扩展到 N 行），O(N²) → O(N)
+            all_rows_after_expand = list(table.rows)
+            for row in all_rows_after_expand:
+                # 关键优化：用 _tr.tc_lst + iter(qn("w:p")) 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
                 row_text = ""
-                for cell in row.cells:
-                    row_text += cell.text
+                for tc in row._tr.tc_lst:
+                    for para in tc.iter(_qn("w:p")):
+                        row_text += para.text
 
                 if "{{#话术}}" in row_text or "{{话术}}" in row_text:
                     # 找到话术行，替换占位符
-                    for cell in row.cells:
-                        cell_text = cell.text
+                    for tc in row._tr.tc_lst:
+                        # 关键优化：直接从 tc 提取文本，避免 _Cell 包装
+                        cell_text = "".join(p.text for p in tc.iter(_qn("w:p")))
                         if "{{话术}}" in cell_text:
                             # 清空并设置新内容（保留格式）
                             cell_text = cell_text.replace("{{#话术}}", "")
                             cell_text = cell_text.replace("{{/话术}}", "")
                             cell_text = cell_text.replace("{{话术}}", full_speech)
-                            self._set_cell_text(cell, cell_text)
+                            # 关键优化：仅在需要 set_cell_text 时才包装 _Cell
+                            self._set_cell_text(_Cell(tc, table), cell_text)
 
     def _apply_dedup_rules(
         self, template_config: Optional[TemplateMetadataModel], data_list: List[Dict[str, Any]]
@@ -791,8 +836,10 @@ class DocumentGenerator:
         # 第一行是表头
         header_row = table.rows[0]
 
-        for idx, cell in enumerate(header_row.cells):
-            text = cell.text.strip()
+        # 关键优化：用 _tr.tc_lst + iter(qn("w:p")) 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+        for idx, tc in enumerate(header_row._tr.tc_lst):
+            # 关键优化：直接从 tc 提取文本，避免 _Cell 包装
+            text = "".join(p.text for p in tc.iter(_qn("w:p"))).strip()
             # 移除占位符标记
             text = re.sub(r"\{\{.*\}\}", "", text).strip()
 
@@ -851,6 +898,7 @@ class DocumentGenerator:
         doc: Document,
         template_config: Optional[TemplateMetadataModel],
         detail_data_list: List[Dict[str, Any]],
+        cached_speech_contents: Optional[List[str]] = None,
     ) -> None:
         """处理话术占位符（完整集成）
 
@@ -858,30 +906,35 @@ class DocumentGenerator:
             doc: Word 文档对象
             template_config: 模板配置（可选）
             detail_data_list: 明细数据列表（用于话术条件判断）
+            cached_speech_contents: 预计算的话术内容，避免重复 process_speeches
         """
         # 如果没有模板配置，简化处理
         if not template_config or not template_config.speeches:
             self._process_speeches_simple(doc)
             return
 
-        # 转换为 Speech 对象
-        speeches = []
-        for s in template_config.speeches:
-            speech = Speech(
-                id=s.id,
-                type=s.type,
-                content=s.content,
-                mutex_group=s.mutex_group,
-                variables={v.name: v.default for v in s.variables},
-                conditions=[
-                    FilterCondition(field=c.field, operator=c.operator, value=c.value)
-                    for c in s.conditions
-                ],
-            )
-            speeches.append(speech)
+        # 优先使用调用方缓存的话术内容（避免重复 O(S×N) 计算）
+        if cached_speech_contents is not None:
+            speech_contents = cached_speech_contents
+        else:
+            # 转换为 Speech 对象
+            speeches = []
+            for s in template_config.speeches:
+                speech = Speech(
+                    id=s.id,
+                    type=s.type,
+                    content=s.content,
+                    mutex_group=s.mutex_group,
+                    variables={v.name: v.default for v in s.variables},
+                    conditions=[
+                        FilterCondition(field=c.field, operator=c.operator, value=c.value)
+                        for c in s.conditions
+                    ],
+                )
+                speeches.append(speech)
 
-        # 处理话术 - 传递明细数据列表用于条件判断
-        speech_contents = self.speech_processor.process_speeches(speeches, detail_data_list)
+            # 处理话术 - 传递明细数据列表用于条件判断
+            speech_contents = self.speech_processor.process_speeches(speeches, detail_data_list)
 
         # 填充话术占位符
         for para in doc.paragraphs:
@@ -923,8 +976,10 @@ class DocumentGenerator:
     def _process_table_speeches(self, table) -> None:
         """处理表格中的话术占位符"""
         for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
+            # 关键优化：用 _tr.tc_lst + cell.paragraphs 替代 row.cells（避免 vMerge/gridSpan 的 XPath 查询）
+            for tc in row._tr.tc_lst:
+                cell = _Cell(tc, table)  # _Cell 包装很廉价
+                for para in cell.paragraphs:  # _Paragraph 对象，支持 .text / .runs
                     text = para.text
                     if "{{#话术}}" in text or "{{话术}}" in text or "{{/话术}}" in text:
                         # 清除话术标记
